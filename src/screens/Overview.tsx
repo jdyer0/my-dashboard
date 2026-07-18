@@ -6,7 +6,10 @@ import { Bar } from '../motion/Bar'
 import { SyncDot } from '../motion/SyncDot'
 import { listAllSets, listExercises, listSessions } from '../gym/data'
 import { bestLifts, bestPerSession } from '../gym/e1rm'
-import { inLondonWeek } from '../lib/londonDay'
+import { inLondonWeek, londonDayKey, recentLondonDayKeys } from '../lib/londonDay'
+import { fetchNutrientDefs, fetchProfile, fetchRecentLog, fetchRniTargets, fetchSettings } from '../food/data'
+import { resolveTargets } from '../food/targets'
+import { averageDailyIntake, nutrientTotal, targetFor } from '../lib/nutrition'
 
 const gbp = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
 
@@ -18,13 +21,10 @@ const dateFormat = new Intl.DateTimeFormat('en-GB', {
 })
 
 // Placeholder values — real data replaces these as each module lands.
-// Gym (Phase 1) is live; kcal, balance, protein and steps wait for
-// Phases 2–4.
+// Gym (Phase 1) and food (Phase 2) are live; balance and steps wait for
+// Phases 3–4.
 const placeholder = {
-  kcal: 1842,
   balancePence: 243152,
-  proteinG: 121,
-  proteinTargetG: 150,
   steps: 8420,
   stepsTarget: 10000,
 }
@@ -79,6 +79,80 @@ function useStrength(): Strength {
   return strength
 }
 
+interface Nutrition {
+  kcalToday: number
+  kcalTarget: number | null
+  proteinToday: number
+  proteinTargetG: number | null
+  /** Worst micro under 50% of RNI on the 7-day view, if any. */
+  worstMicro: { name: string; pct: number } | null
+}
+
+function useNutrition(): Nutrition {
+  const [nutrition, setNutrition] = useState<Nutrition>({
+    kcalToday: 0,
+    kcalTarget: null,
+    proteinToday: 0,
+    proteinTargetG: null,
+    worstMicro: null,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [profile, settings, rni, defs, log] = await Promise.all([
+          fetchProfile(),
+          fetchSettings(),
+          fetchRniTargets(),
+          fetchNutrientDefs(),
+          fetchRecentLog(7),
+        ])
+        if (cancelled) return
+        const now = new Date()
+        const todayKey = londonDayKey(now)
+        const weekKeys = new Set(recentLondonDayKeys(now, 7))
+        const todayFoods = log
+          .filter((e) => londonDayKey(new Date(e.logged_at)) === todayKey)
+          .map((e) => ({ amountG: e.amount_g, per100g: e.foods.per_100g }))
+        const weekFoods = log
+          .filter((e) => weekKeys.has(londonDayKey(new Date(e.logged_at))))
+          .map((e) => ({ amountG: e.amount_g, per100g: e.foods.per_100g }))
+
+        const targets = resolveTargets(profile, settings, rni, now)
+        let worst: { name: string; pct: number } | null = null
+        if (targets && weekFoods.length > 0) {
+          for (const def of defs.filter((d) => d.kind === 'micro')) {
+            const average = averageDailyIntake(weekFoods, def.key, 7)
+            const target = targetFor(rni, def.key, targets.sex, targets.ageYears)
+            if (average === null || target === null || target <= 0) continue
+            const pct = (average / target) * 100
+            if (pct < 50 && (!worst || pct < worst.pct)) {
+              worst = { name: def.display_name, pct }
+            }
+          }
+        }
+
+        setNutrition({
+          kcalToday: nutrientTotal(todayFoods, 'energy_kcal').value,
+          kcalTarget: targets?.kcalTarget ?? null,
+          proteinToday: nutrientTotal(todayFoods, 'protein').value,
+          proteinTargetG: targets?.proteinTargetG ?? null,
+          worstMicro: worst,
+        })
+      } catch {
+        // Quiet on the overview; the food tab surfaces and retries failures.
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return nutrition
+}
+
 function MetricTile({ label, children }: { label: string; children: ReactNode }) {
   return (
     <BootItem className="rounded-card border border-line bg-surface px-2 py-2.5">
@@ -121,6 +195,7 @@ function TargetRow({
 export function Overview() {
   const today = dateFormat.format(new Date())
   const strength = useStrength()
+  const nutrition = useNutrition()
 
   return (
     <BootSequence>
@@ -140,7 +215,7 @@ export function Overview() {
             <CountUp value={strength.sessionsThisWeek} />
           </MetricTile>
           <MetricTile label="Kcal today">
-            <CountUp value={placeholder.kcal} />
+            <CountUp value={nutrition.kcalToday} />
           </MetricTile>
           <MetricTile label="Balance">
             <CountUp value={placeholder.balancePence / 100} format={(n) => gbp.format(n)} />
@@ -171,18 +246,28 @@ export function Overview() {
         <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
           <h2 className="text-card-title text-ink">Today</h2>
           <div className="mt-3 space-y-3">
-            <TargetRow
-              label="Protein"
-              value={placeholder.proteinG}
-              max={placeholder.proteinTargetG}
-              unit="g"
-            />
+            {nutrition.proteinTargetG !== null && (
+              <TargetRow
+                label="Protein"
+                value={Math.round(nutrition.proteinToday)}
+                max={Math.round(nutrition.proteinTargetG)}
+                unit="g"
+              />
+            )}
             <TargetRow
               label="Steps"
               value={placeholder.steps}
               max={placeholder.stepsTarget}
               unit=""
             />
+            {nutrition.worstMicro && (
+              <div className="flex items-baseline justify-between">
+                <span className="text-label text-ink-faint">Lowest micronutrient, 7 days</span>
+                <span className="text-label font-mono tabular-nums text-warn">
+                  {nutrition.worstMicro.name} {Math.round(nutrition.worstMicro.pct)}%
+                </span>
+              </div>
+            )}
           </div>
         </BootItem>
       </div>
