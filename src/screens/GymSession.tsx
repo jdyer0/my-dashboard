@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   addExercise,
@@ -9,20 +9,21 @@ import {
   finishSession,
   listAllSets,
   listExercises,
+  updateExerciseSettings,
 } from '../gym/data'
 import { adviseProgression } from '../gym/coach'
-import { e1rm, prSetIds } from '../gym/e1rm'
-import { clockTime, fmtKg } from '../gym/format'
+import { bestLifts, e1rm, prSetIds } from '../gym/e1rm'
+import { clockTime, fmtKg, sessionDate } from '../gym/format'
 import type { Exercise, GymSession as Session, GymSet } from '../gym/types'
 
-const WEIGHT_STEP_KG = 2.5
+const NEW_EXERCISE = '__new__'
 
 function parseWeight(text: string): number | null {
   const n = Number(text.replace(',', '.'))
   return Number.isFinite(n) && n >= 0 && n <= 9999 ? n : null
 }
 
-function parseReps(text: string): number | null {
+function parseCount(text: string): number | null {
   const n = Number(text)
   return Number.isInteger(n) && n > 0 && n <= 999 ? n : null
 }
@@ -38,6 +39,39 @@ function groupSets(sets: GymSet[]): { exerciseId: string; sets: GymSet[] }[] {
   return [...groups.entries()].map(([exerciseId, grouped]) => ({ exerciseId, sets: grouped }))
 }
 
+function SetRow({
+  set,
+  isPr,
+  onDelete,
+}: {
+  set: GymSet
+  isPr: boolean
+  onDelete: () => void
+}) {
+  return (
+    <li className="flex min-h-[44px] items-center justify-between border-b border-line py-1 last:border-b-0">
+      <span className="text-metric-sm font-mono tabular-nums text-ink">
+        {fmtKg(set.weight_kg)} kg × {set.reps}
+      </span>
+      <span className="flex items-center gap-2">
+        <span
+          className={`text-label font-mono tabular-nums ${isPr ? 'text-live' : 'text-ink-faint'}`}
+        >
+          {isPr ? 'PR ' : ''}e1RM {fmtKg(e1rm(set.weight_kg, set.reps))}
+        </span>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label="Delete set"
+          className="flex h-11 w-11 items-center justify-center text-ink-faint transition-transform duration-150 ease-instrument active:scale-[0.98]"
+        >
+          ×
+        </button>
+      </span>
+    </li>
+  )
+}
+
 export function GymSession() {
   const navigate = useNavigate()
   const [session, setSession] = useState<Session | null>(null)
@@ -46,10 +80,14 @@ export function GymSession() {
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
 
-  const [current, setCurrent] = useState<Exercise | null>(null)
-  const [search, setSearch] = useState('')
+  const [currentId, setCurrentId] = useState('')
+  const [newName, setNewName] = useState('')
+  const [addingNew, setAddingNew] = useState(false)
   const [weight, setWeight] = useState('20')
   const [reps, setReps] = useState('8')
+  const [increment, setIncrement] = useState('2.5')
+  const [rangeMin, setRangeMin] = useState('8')
+  const [rangeMax, setRangeMax] = useState('12')
   const [saving, setSaving] = useState(false)
   const [finishing, setFinishing] = useState(false)
 
@@ -81,6 +119,10 @@ export function GymSession() {
     }
   }, [navigate])
 
+  const current = useMemo(
+    () => exercises.find((e) => e.id === currentId) ?? null,
+    [exercises, currentId],
+  )
   const sessionSets = useMemo(
     () => (session ? allSets.filter((s) => s.session_id === session.id) : []),
     [allSets, session],
@@ -88,25 +130,84 @@ export function GymSession() {
   const prs = useMemo(() => prSetIds(allSets), [allSets])
   const names = useMemo(() => new Map(exercises.map((e) => [e.id, e.name])), [exercises])
 
-  // Coach hint for the selected exercise, from its most recent set — which
-  // includes sets logged moments ago, so the hint moves with the session.
-  const hint = useMemo(() => {
+  // allSets is chronological, so the last match is the most recent set.
+  const lastSet = useMemo(() => {
     if (!current) return null
-    const last = [...allSets].reverse().find((s) => s.exercise_id === current.id)
-    if (!last) return null
+    return [...allSets].reverse().find((s) => s.exercise_id === current.id) ?? null
+  }, [allSets, current])
+
+  const bestE1rm = useMemo(() => {
+    if (!current) return null
+    return bestLifts(allSets).find((l) => l.exerciseId === current.id)?.e1rmKg ?? null
+  }, [allSets, current])
+
+  const hint = useMemo(() => {
+    if (!current || !lastSet) return null
     const advice = adviseProgression({
-      weightKg: last.weight_kg,
-      reps: last.reps,
+      weightKg: lastSet.weight_kg,
+      reps: lastSet.reps,
       incrementKg: current.increment_kg,
       repRangeMin: current.rep_range_min,
       repRangeMax: current.rep_range_max,
     })
     const targetReps =
       advice.action === 'hold'
-        ? Math.min(last.reps + 1, current.rep_range_max)
+        ? Math.min(lastSet.reps + 1, current.rep_range_max)
         : current.rep_range_min
     return { ...advice, targetReps }
-  }, [allSets, current])
+  }, [current, lastSet])
+
+  function selectExercise(exercise: Exercise) {
+    setCurrentId(exercise.id)
+    setNewName('')
+    setIncrement(String(exercise.increment_kg))
+    setRangeMin(String(exercise.rep_range_min))
+    setRangeMax(String(exercise.rep_range_max))
+    const last = [...allSets].reverse().find((s) => s.exercise_id === exercise.id)
+    if (last) {
+      setWeight(String(last.weight_kg))
+      setReps(String(last.reps))
+    }
+  }
+
+  function onSelectChange(value: string) {
+    if (value === NEW_EXERCISE) {
+      setCurrentId(NEW_EXERCISE)
+      return
+    }
+    const exercise = exercises.find((e) => e.id === value)
+    if (exercise) selectExercise(exercise)
+  }
+
+  async function createExercise() {
+    const name = newName.trim()
+    if (!name || addingNew) return
+    setAddingNew(true)
+    setFailed(null)
+    try {
+      const exercise = await addExercise(name)
+      setExercises((prev) => [...prev, exercise].sort((a, b) => a.name.localeCompare(b.name)))
+      selectExercise(exercise)
+    } catch {
+      setFailed("Couldn't add the exercise. Try again.")
+    } finally {
+      setAddingNew(false)
+    }
+  }
+
+  function persistSettings(next: { increment: string; min: string; max: string }) {
+    if (!current) return
+    const incrementKg = parseWeight(next.increment)
+    const min = parseCount(next.min)
+    const max = parseCount(next.max)
+    if (incrementKg === null || incrementKg <= 0 || min === null || max === null || max < min)
+      return
+    const settings = { increment_kg: incrementKg, rep_range_min: min, rep_range_max: max }
+    setExercises((prev) => prev.map((e) => (e.id === current.id ? { ...e, ...settings } : e)))
+    updateExerciseSettings(current.id, settings).catch(() =>
+      setFailed("Couldn't save the exercise settings. They'll reset next time."),
+    )
+  }
 
   function applyHint() {
     if (!hint) return
@@ -114,35 +215,10 @@ export function GymSession() {
     setReps(String(hint.targetReps))
   }
 
-  const pickExercise = useCallback(
-    (exercise: Exercise) => {
-      setCurrent(exercise)
-      setSearch('')
-      // Prefill from the most recent set of this exercise; allSets is chronological.
-      const last = [...allSets].reverse().find((s) => s.exercise_id === exercise.id)
-      if (last) {
-        setWeight(String(last.weight_kg))
-        setReps(String(last.reps))
-      }
-    },
-    [allSets],
-  )
-
-  async function createExercise(name: string) {
-    try {
-      const exercise = await addExercise(name)
-      setExercises((prev) => [...prev, exercise].sort((a, b) => a.name.localeCompare(b.name)))
-      pickExercise(exercise)
-      setFailed(null)
-    } catch {
-      setFailed("Couldn't add the exercise. Try again.")
-    }
-  }
-
   async function logSet() {
     if (!session || !current || saving) return
     const w = parseWeight(weight)
-    const r = parseReps(reps)
+    const r = parseCount(reps)
     if (w === null || r === null) {
       setFailed('Enter a weight in kg and at least one rep.')
       return
@@ -185,11 +261,12 @@ export function GymSession() {
 
   function stepWeight(direction: 1 | -1) {
     const w = parseWeight(weight) ?? 0
-    setWeight(String(Math.max(0, w + direction * WEIGHT_STEP_KG)))
+    const step = current?.increment_kg ?? 2.5
+    setWeight(String(Math.max(0, Math.round((w + direction * step) * 100) / 100)))
   }
 
   function stepReps(direction: 1 | -1) {
-    const r = parseReps(reps) ?? 0
+    const r = parseCount(reps) ?? 0
     setReps(String(Math.max(1, r + direction)))
   }
 
@@ -201,12 +278,10 @@ export function GymSession() {
     ) : null
   }
 
-  const query = search.trim().toLowerCase()
-  const matches = query
-    ? exercises.filter((e) => e.name.toLowerCase().includes(query))
-    : exercises
-  const exactMatch = exercises.some((e) => e.name.toLowerCase() === query)
-  const groups = groupSets(sessionSets)
+  const currentSessionSets = current
+    ? sessionSets.filter((s) => s.exercise_id === current.id)
+    : []
+  const otherGroups = groupSets(sessionSets).filter((g) => g.exerciseId !== current?.id)
 
   return (
     <div className="mx-auto max-w-md">
@@ -229,48 +304,148 @@ export function GymSession() {
         </button>
       </header>
 
-      {current ? (
-        <section className="rounded-card border border-line bg-surface p-3">
+      <label htmlFor="exercise-select" className="text-label text-ink-faint">
+        Exercise
+      </label>
+      <select
+        id="exercise-select"
+        value={currentId}
+        onChange={(e) => onSelectChange(e.target.value)}
+        className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright"
+      >
+        <option value="" disabled>
+          Choose exercise
+        </option>
+        {exercises.map((exercise) => (
+          <option key={exercise.id} value={exercise.id}>
+            {exercise.name}
+          </option>
+        ))}
+        <option value={NEW_EXERCISE}>Add new exercise</option>
+      </select>
+
+      {currentId === NEW_EXERCISE && (
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            placeholder="Exercise name"
+            aria-label="New exercise name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="h-11 w-full min-w-0 rounded-ctl border border-line bg-surface px-3 text-body text-ink placeholder:text-ink-faint focus:border-line-bright"
+          />
+          <button
+            type="button"
+            onClick={() => void createExercise()}
+            disabled={addingNew || !newName.trim()}
+            className="h-11 shrink-0 rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          >
+            Add
+          </button>
+        </div>
+      )}
+
+      {failed && <p className="mt-2 text-body text-alert">{failed}</p>}
+
+      {current && (
+        <section className="mt-2.5 rounded-card border border-line bg-surface p-3">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-card-title text-ink">{current.name}</h2>
-            <button
-              type="button"
-              onClick={() => setCurrent(null)}
-              className="min-h-[44px] px-2 text-label text-ink-dim"
-            >
-              Change exercise
-            </button>
+            <span className="text-label text-ink-faint">Last set</span>
+            <span className="text-label font-mono tabular-nums text-ink-dim">
+              {lastSet
+                ? `${fmtKg(lastSet.weight_kg)} kg × ${lastSet.reps} · ${sessionDate.format(new Date(lastSet.performed_at))}`
+                : 'none yet'}
+            </span>
+          </div>
+          {bestE1rm !== null && (
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-label text-ink-faint">Best e1RM</span>
+              <span className="text-label font-mono tabular-nums text-ink-dim">
+                {fmtKg(bestE1rm)} kg
+              </span>
+            </div>
+          )}
+
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <div>
+              <label htmlFor="session-increment" className="text-label text-ink-faint">
+                Increment kg
+              </label>
+              <input
+                id="session-increment"
+                inputMode="decimal"
+                value={increment}
+                onChange={(e) => {
+                  setIncrement(e.target.value)
+                  persistSettings({ increment: e.target.value, min: rangeMin, max: rangeMax })
+                }}
+                className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
+              />
+            </div>
+            <div>
+              <label htmlFor="session-range-min" className="text-label text-ink-faint">
+                Reps from
+              </label>
+              <input
+                id="session-range-min"
+                inputMode="numeric"
+                value={rangeMin}
+                onChange={(e) => {
+                  setRangeMin(e.target.value)
+                  persistSettings({ increment, min: e.target.value, max: rangeMax })
+                }}
+                className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
+              />
+            </div>
+            <div>
+              <label htmlFor="session-range-max" className="text-label text-ink-faint">
+                Reps to
+              </label>
+              <input
+                id="session-range-max"
+                inputMode="numeric"
+                value={rangeMax}
+                onChange={(e) => {
+                  setRangeMax(e.target.value)
+                  persistSettings({ increment, min: rangeMin, max: e.target.value })
+                }}
+                className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
+              />
+            </div>
           </div>
 
           {hint && (
-            <button
-              type="button"
-              onClick={applyHint}
-              className="mt-1 flex min-h-[44px] w-full items-center justify-between text-left"
-            >
-              <span className="text-label text-ink-faint">
-                Coach ·{' '}
-                {hint.action === 'increase'
-                  ? 'increase to'
-                  : hint.action === 'decrease'
-                    ? 'drop to'
-                    : 'stay at'}
-              </span>
-              <span
-                className={`text-label font-mono tabular-nums ${
-                  hint.action === 'increase'
-                    ? 'text-live'
-                    : hint.action === 'decrease'
-                      ? 'text-warn'
-                      : 'text-ink-dim'
-                }`}
+            <>
+              <button
+                type="button"
+                onClick={applyHint}
+                className="mt-1 flex min-h-[44px] w-full items-center justify-between text-left"
               >
-                {fmtKg(hint.targetWeightKg)} kg × {hint.targetReps}
-              </span>
-            </button>
+                <span className="text-label text-ink-faint">
+                  Coach ·{' '}
+                  {hint.action === 'increase'
+                    ? 'increase to'
+                    : hint.action === 'decrease'
+                      ? 'drop to'
+                      : 'stay at'}
+                </span>
+                <span
+                  className={`text-label font-mono tabular-nums ${
+                    hint.action === 'increase'
+                      ? 'text-live'
+                      : hint.action === 'decrease'
+                        ? 'text-warn'
+                        : 'text-ink-dim'
+                  }`}
+                >
+                  {fmtKg(hint.targetWeightKg)} kg × {hint.targetReps}
+                </span>
+              </button>
+              <p className="text-label text-ink-faint">{hint.reason}</p>
+            </>
           )}
 
-          <div className="mt-1 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <div>
               <label htmlFor="weight" className="text-label text-ink-faint">
                 Weight kg
@@ -341,52 +516,25 @@ export function GymSession() {
           >
             Log set
           </button>
-        </section>
-      ) : (
-        <section className="rounded-card border border-line bg-surface p-3">
-          <label htmlFor="exercise-search" className="text-label text-ink-faint">
-            Exercise
-          </label>
-          <input
-            id="exercise-search"
-            type="text"
-            placeholder="Search or add"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink placeholder:text-ink-faint focus:border-line-bright"
-          />
-          <ul className="mt-1">
-            {matches.map((exercise) => (
-              <li key={exercise.id}>
-                <button
-                  type="button"
-                  onClick={() => pickExercise(exercise)}
-                  className="flex min-h-[44px] w-full items-center border-b border-line py-2 text-left text-body text-ink last:border-b-0"
-                >
-                  {exercise.name}
-                </button>
-              </li>
-            ))}
-            {query && !exactMatch && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => void createExercise(search.trim())}
-                  className="flex min-h-[44px] w-full items-center py-2 text-left text-body text-live"
-                >
-                  Add "{search.trim()}"
-                </button>
-              </li>
-            )}
-          </ul>
+
+          {currentSessionSets.length > 0 && (
+            <ul className="mt-2">
+              {currentSessionSets.map((set) => (
+                <SetRow
+                  key={set.id}
+                  set={set}
+                  isPr={prs.has(set.id)}
+                  onDelete={() => void removeSet(set.id)}
+                />
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
-      {failed && <p className="mt-2 text-body text-alert">{failed}</p>}
-
-      {groups.length > 0 && (
+      {otherGroups.length > 0 && (
         <div className="mt-2.5 space-y-2.5">
-          {[...groups].reverse().map((group) => (
+          {[...otherGroups].reverse().map((group) => (
             <section
               key={group.exerciseId}
               className="rounded-card border border-line bg-surface p-3"
@@ -395,34 +543,14 @@ export function GymSession() {
                 {names.get(group.exerciseId) ?? 'Unknown exercise'}
               </h2>
               <ul className="mt-1">
-                {group.sets.map((set) => {
-                  const isPr = prs.has(set.id)
-                  return (
-                    <li
-                      key={set.id}
-                      className="flex min-h-[44px] items-center justify-between border-b border-line py-1 last:border-b-0"
-                    >
-                      <span className="text-metric-sm font-mono tabular-nums text-ink">
-                        {fmtKg(set.weight_kg)} kg × {set.reps}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={`text-label font-mono tabular-nums ${isPr ? 'text-live' : 'text-ink-faint'}`}
-                        >
-                          {isPr ? 'PR ' : ''}e1RM {fmtKg(e1rm(set.weight_kg, set.reps))}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void removeSet(set.id)}
-                          aria-label="Delete set"
-                          className="flex h-11 w-11 items-center justify-center text-ink-faint transition-transform duration-150 ease-instrument active:scale-[0.98]"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    </li>
-                  )
-                })}
+                {group.sets.map((set) => (
+                  <SetRow
+                    key={set.id}
+                    set={set}
+                    isPr={prs.has(set.id)}
+                    onDelete={() => void removeSet(set.id)}
+                  />
+                ))}
               </ul>
             </section>
           ))}
