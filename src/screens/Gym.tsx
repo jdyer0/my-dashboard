@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BootItem, BootSequence } from '../motion/BootSequence'
-import { listAllSets, listExercises, listSessions, startSession } from '../gym/data'
+import { fetchSplitDays, listAllSets, listExercises, listSessions, startSession } from '../gym/data'
 import { bestLifts, totalVolumeKg } from '../gym/e1rm'
 import { clockTime, fmtKg, sessionDate } from '../gym/format'
-import { inLondonWeek } from '../lib/londonDay'
-import type { Exercise, GymSession, GymSet } from '../gym/types'
+import { FOCUS_LABELS } from '../gym/split'
+import { inLondonWeek, londonWeekday } from '../lib/londonDay'
+import type { Exercise, GymSession, GymSet, SplitDay } from '../gym/types'
 
 interface GymData {
   sessions: GymSession[]
   sets: GymSet[]
   exercises: Exercise[]
+  splitDays: SplitDay[]
 }
 
 export function Gym() {
@@ -22,12 +24,13 @@ export function Gym() {
   const load = useCallback(async () => {
     setFailed(false)
     try {
-      const [sessions, sets, exercises] = await Promise.all([
+      const [sessions, sets, exercises, splitDays] = await Promise.all([
         listSessions(),
         listAllSets(),
         listExercises(),
+        fetchSplitDays(),
       ])
-      setData({ sessions, sets, exercises })
+      setData({ sessions, sets, exercises, splitDays })
     } catch {
       setFailed(true)
     }
@@ -80,6 +83,7 @@ export function Gym() {
     else setsBySession.set(set.session_id, [set])
   }
   const now = new Date()
+  const todayFocus = data.splitDays.find((d) => d.weekday === londonWeekday(now))?.focus
 
   return (
     <BootSequence>
@@ -114,6 +118,27 @@ export function Gym() {
               Start session
             </button>
           )}
+        </BootItem>
+
+        <BootItem className="mt-2.5">
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              to="/gym/coach"
+              className="rounded-card border border-line bg-surface px-3 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+            >
+              <span className="block text-body text-ink">Coach</span>
+              <span className="block text-label text-ink-faint">Progression advice</span>
+            </Link>
+            <Link
+              to="/gym/split"
+              className="rounded-card border border-line bg-surface px-3 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+            >
+              <span className="block text-body text-ink">Split</span>
+              <span className="block text-label text-ink-faint">
+                {todayFocus ? `Today · ${FOCUS_LABELS[todayFocus]}` : 'Plan your week'}
+              </span>
+            </Link>
+          </div>
         </BootItem>
 
         {bests.length > 0 && (

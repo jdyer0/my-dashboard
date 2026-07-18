@@ -9,6 +9,9 @@ import { Overview } from './screens/Overview'
 import { Gym } from './screens/Gym'
 import { GymSession } from './screens/GymSession'
 import { GymSessionDetail } from './screens/GymSessionDetail'
+import { GymCoach } from './screens/GymCoach'
+import { GymSplit } from './screens/GymSplit'
+import { GymSplitTemplate } from './screens/GymSplitTemplate'
 import { Food } from './screens/Food'
 import { FoodSearch } from './screens/FoodSearch'
 import { FoodPortion } from './screens/FoodPortion'
@@ -29,6 +32,9 @@ function Gate() {
         <Route path="gym" element={<Gym />} />
         <Route path="gym/session" element={<GymSession />} />
         <Route path="gym/session/:id" element={<GymSessionDetail />} />
+        <Route path="gym/coach" element={<GymCoach />} />
+        <Route path="gym/split" element={<GymSplit />} />
+        <Route path="gym/split/:focus" element={<GymSplitTemplate />} />
         <Route path="food" element={<Food />} />
         <Route path="food/log" element={<FoodSearch />} />
         <Route path="food/portion/:foodId" element={<FoodPortion />} />

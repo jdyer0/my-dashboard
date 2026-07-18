@@ -1,7 +1,14 @@
 import { supabase } from '../lib/supabase'
-import type { Exercise, GymSession, GymSet } from './types'
+import type {
+  Exercise,
+  GymSession,
+  GymSet,
+  SplitDay,
+  SplitFocus,
+  SplitTemplateExercise,
+} from './types'
 
-const EXERCISE_COLS = 'id, name, created_at'
+const EXERCISE_COLS = 'id, name, created_at, increment_kg, rep_range_min, rep_range_max'
 const SESSION_COLS = 'id, started_at, ended_at'
 const SET_COLS = 'id, session_id, exercise_id, weight_kg, reps, performed_at'
 
@@ -114,5 +121,57 @@ export async function addSet(
 
 export async function deleteSet(id: string): Promise<void> {
   const { error } = await supabase.from('gym_sets').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function updateExerciseSettings(
+  id: string,
+  settings: { increment_kg: number; rep_range_min: number; rep_range_max: number },
+): Promise<void> {
+  const { error } = await supabase.from('exercises').update(settings).eq('id', id)
+  if (error) throw error
+}
+
+export async function fetchSplitDays(): Promise<SplitDay[]> {
+  const { data, error } = await supabase
+    .from('split_days')
+    .select('weekday, focus')
+    .order('weekday')
+  if (error) throw error
+  return data
+}
+
+export async function setSplitDay(weekday: number, focus: SplitFocus): Promise<void> {
+  const { error } = await supabase
+    .from('split_days')
+    .upsert({ user_id: await userId(), weekday, focus }, { onConflict: 'user_id,weekday' })
+  if (error) throw error
+}
+
+export async function fetchSplitTemplates(): Promise<SplitTemplateExercise[]> {
+  const { data, error } = await supabase
+    .from('split_template_exercises')
+    .select('id, focus, exercise_id, position')
+    .order('position')
+  if (error) throw error
+  return data
+}
+
+export async function addSplitTemplateExercise(
+  focus: Exclude<SplitFocus, 'rest'>,
+  exerciseId: string,
+  position: number,
+): Promise<SplitTemplateExercise> {
+  const { data, error } = await supabase
+    .from('split_template_exercises')
+    .insert({ user_id: await userId(), focus, exercise_id: exerciseId, position })
+    .select('id, focus, exercise_id, position')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function removeSplitTemplateExercise(id: string): Promise<void> {
+  const { error } = await supabase.from('split_template_exercises').delete().eq('id', id)
   if (error) throw error
 }
