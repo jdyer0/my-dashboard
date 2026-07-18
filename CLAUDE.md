@@ -14,8 +14,8 @@ Four modules, built in this order:
 
 | Phase | Module                                                      | Status |
 | ----- | ----------------------------------------------------------- | ------ |
-| 0     | Scaffold, design system, auth, shell                        | Built 2026-07-17, not yet deployed |
-| 1     | Gym — exercises, sessions, sets, e1RM, PRs                  | —      |
+| 0     | Scaffold, design system, auth, shell                        | Built 2026-07-17, deployed 2026-07-18 |
+| 1     | Gym — exercises, sessions, sets, e1RM, PRs                  | Built 2026-07-18, not yet deployed |
 | 2     | Nutrition — food logging, macros + micronutrients vs UK RNI | —      |
 | 3     | Finances — bank sync, transactions, balances                | —      |
 | 4     | Goals — habits/streaks + long-term milestones               | —      |
