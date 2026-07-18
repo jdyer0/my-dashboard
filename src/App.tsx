@@ -10,6 +10,7 @@ import { Gym } from './screens/Gym'
 import { GymSession } from './screens/GymSession'
 import { GymSessionDetail } from './screens/GymSessionDetail'
 import { GymCoach } from './screens/GymCoach'
+import { GymHistory } from './screens/GymHistory'
 import { GymSplit } from './screens/GymSplit'
 import { GymSplitTemplate } from './screens/GymSplitTemplate'
 import { Food } from './screens/Food'
@@ -32,6 +33,7 @@ function Gate() {
         <Route path="gym" element={<Gym />} />
         <Route path="gym/session" element={<GymSession />} />
         <Route path="gym/session/:id" element={<GymSessionDetail />} />
+        <Route path="gym/history" element={<GymHistory />} />
         <Route path="gym/coach" element={<GymCoach />} />
         <Route path="gym/split" element={<GymSplit />} />
         <Route path="gym/split/:focus" element={<GymSplitTemplate />} />

@@ -166,9 +166,14 @@ export function Gym() {
 
         {finished.length > 0 && (
           <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
-            <h2 className="text-card-title text-ink">History</h2>
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-card-title text-ink">History</h2>
+              <Link to="/gym/history" className="flex min-h-[44px] items-center px-2 text-label text-ink-dim">
+                All sessions
+              </Link>
+            </div>
             <ul className="mt-1">
-              {finished.slice(0, 20).map((session) => {
+              {finished.slice(0, 5).map((session) => {
                 const sets = setsBySession.get(session.id) ?? []
                 return (
                   <li key={session.id}>
