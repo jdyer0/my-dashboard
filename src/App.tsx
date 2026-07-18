@@ -9,6 +9,12 @@ import { Overview } from './screens/Overview'
 import { Gym } from './screens/Gym'
 import { GymSession } from './screens/GymSession'
 import { GymSessionDetail } from './screens/GymSessionDetail'
+import { Food } from './screens/Food'
+import { FoodSearch } from './screens/FoodSearch'
+import { FoodPortion } from './screens/FoodPortion'
+import { FoodCustom } from './screens/FoodCustom'
+import { FoodEntry } from './screens/FoodEntry'
+import { FoodMicros } from './screens/FoodMicros'
 
 function Gate() {
   const auth = useAuth()
@@ -23,10 +29,12 @@ function Gate() {
         <Route path="gym" element={<Gym />} />
         <Route path="gym/session" element={<GymSession />} />
         <Route path="gym/session/:id" element={<GymSessionDetail />} />
-        <Route
-          path="food"
-          element={<EmptyModule title="Food" invitation="Log your first meal" />}
-        />
+        <Route path="food" element={<Food />} />
+        <Route path="food/log" element={<FoodSearch />} />
+        <Route path="food/portion/:foodId" element={<FoodPortion />} />
+        <Route path="food/new" element={<FoodCustom />} />
+        <Route path="food/entry/:id" element={<FoodEntry />} />
+        <Route path="food/micros" element={<FoodMicros />} />
         <Route
           path="money"
           element={<EmptyModule title="Money" invitation="Connect your bank" />}
