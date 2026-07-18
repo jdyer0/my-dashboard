@@ -19,3 +19,6 @@ supabase/.branches
 
 # Local Netlify folder
 .netlify
+
+# Source datasets for one-off ETLs (CoFID workbook) — downloaded, not committed
+data/
