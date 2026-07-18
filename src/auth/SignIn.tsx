@@ -1,26 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 
-type Phase = 'idle' | 'sending' | 'sent' | 'error'
-
 export function SignIn() {
   const [email, setEmail] = useState('')
-  const [phase, setPhase] = useState<Phase>('idle')
+  const [password, setPassword] = useState('')
+  const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!email || phase === 'sending') return
-    setPhase('sending')
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin,
-        // Single-user app: the user exists already, created in the Supabase
-        // dashboard. Never create accounts from the sign-in form.
-        shouldCreateUser: false,
-      },
-    })
-    setPhase(error ? 'error' : 'sent')
+    if (!email || !password || pending) return
+    setPending(true)
+    setFailed(false)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    // On success the AuthProvider listener swaps the gate to the shell;
+    // this screen unmounts, so only the failure case needs handling here.
+    setPending(false)
+    setFailed(Boolean(error))
   }
 
   return (
@@ -44,17 +40,31 @@ export function SignIn() {
           />
         </div>
 
+        <div className="space-y-1.5">
+          <label htmlFor="password" className="block text-label text-ink-faint">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright"
+          />
+        </div>
+
         <button
           type="submit"
-          disabled={phase === 'sending'}
+          disabled={pending}
           className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
-          {phase === 'sending' ? 'Sending' : 'Send sign-in link'}
+          {pending ? 'Signing in' : 'Sign in'}
         </button>
 
-        {phase === 'sent' && <p className="text-body text-ink-dim">Link sent. Check your email.</p>}
-        {phase === 'error' && (
-          <p className="text-body text-alert">Sign-in failed. Check the address and try again.</p>
+        {failed && (
+          <p className="text-body text-alert">Sign-in failed. Check your email and password.</p>
         )}
       </form>
     </div>
