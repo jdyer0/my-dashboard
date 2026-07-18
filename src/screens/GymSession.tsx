@@ -10,6 +10,7 @@ import {
   listAllSets,
   listExercises,
 } from '../gym/data'
+import { adviseProgression } from '../gym/coach'
 import { e1rm, prSetIds } from '../gym/e1rm'
 import { clockTime, fmtKg } from '../gym/format'
 import type { Exercise, GymSession as Session, GymSet } from '../gym/types'
@@ -86,6 +87,32 @@ export function GymSession() {
   )
   const prs = useMemo(() => prSetIds(allSets), [allSets])
   const names = useMemo(() => new Map(exercises.map((e) => [e.id, e.name])), [exercises])
+
+  // Coach hint for the selected exercise, from its most recent set — which
+  // includes sets logged moments ago, so the hint moves with the session.
+  const hint = useMemo(() => {
+    if (!current) return null
+    const last = [...allSets].reverse().find((s) => s.exercise_id === current.id)
+    if (!last) return null
+    const advice = adviseProgression({
+      weightKg: last.weight_kg,
+      reps: last.reps,
+      incrementKg: current.increment_kg,
+      repRangeMin: current.rep_range_min,
+      repRangeMax: current.rep_range_max,
+    })
+    const targetReps =
+      advice.action === 'hold'
+        ? Math.min(last.reps + 1, current.rep_range_max)
+        : current.rep_range_min
+    return { ...advice, targetReps }
+  }, [allSets, current])
+
+  function applyHint() {
+    if (!hint) return
+    setWeight(String(hint.targetWeightKg))
+    setReps(String(hint.targetReps))
+  }
 
   const pickExercise = useCallback(
     (exercise: Exercise) => {
@@ -214,6 +241,34 @@ export function GymSession() {
               Change exercise
             </button>
           </div>
+
+          {hint && (
+            <button
+              type="button"
+              onClick={applyHint}
+              className="mt-1 flex min-h-[44px] w-full items-center justify-between text-left"
+            >
+              <span className="text-label text-ink-faint">
+                Coach ·{' '}
+                {hint.action === 'increase'
+                  ? 'increase to'
+                  : hint.action === 'decrease'
+                    ? 'drop to'
+                    : 'stay at'}
+              </span>
+              <span
+                className={`text-label font-mono tabular-nums ${
+                  hint.action === 'increase'
+                    ? 'text-live'
+                    : hint.action === 'decrease'
+                      ? 'text-warn'
+                      : 'text-ink-dim'
+                }`}
+              >
+                {fmtKg(hint.targetWeightKg)} kg × {hint.targetReps}
+              </span>
+            </button>
+          )}
 
           <div className="mt-1 grid grid-cols-2 gap-2">
             <div>
