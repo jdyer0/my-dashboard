@@ -217,7 +217,7 @@ export function Food() {
         <BootItem className="rounded-card border border-line bg-surface p-3">
           <h2 className="text-card-title text-ink">Today</h2>
           <div className="mt-2 flex items-baseline gap-2">
-            <p className={`text-metric ${kcalWithin ? 'text-live' : targets ? 'text-warn' : 'text-ink'}`}>
+            <p className={`text-metric ${kcalWithin ? 'glow-live text-live' : targets ? 'text-warn' : 'text-ink'}`}>
               <CountUp value={kcal} />
             </p>
             {targets && (

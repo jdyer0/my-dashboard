@@ -19,7 +19,7 @@ export function TabBar() {
             end={to === '/'}
             className={({ isActive }) =>
               `flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-transform duration-150 ease-instrument active:scale-[0.98] ${
-                isActive ? 'text-ink' : 'text-ink-faint'
+                isActive ? 'glow-icon text-live' : 'text-ink-faint'
               }`
             }
           >

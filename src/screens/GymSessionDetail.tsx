@@ -120,7 +120,7 @@ export function GymSessionDetail() {
                       {fmtKg(set.weight_kg)} kg × {set.reps}
                     </span>
                     <span
-                      className={`text-label font-mono tabular-nums ${isPr ? 'text-live' : 'text-ink-faint'}`}
+                      className={`text-label font-mono tabular-nums ${isPr ? 'glow-live text-live' : 'text-ink-faint'}`}
                     >
                       {isPr ? 'PR ' : ''}e1RM {fmtKg(e1rm(set.weight_kg, set.reps))}
                     </span>

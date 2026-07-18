@@ -72,8 +72,7 @@ state and context are sufficient for a four-tab app. No date library heavier tha
 ## 4. Design system
 
 The look is "Jarvis, stripped of theatre." Dark canvas, monospaced numerals, hairline
-geometry, one accent used only for live or on-target data. No glow, no gradients, no
-scanlines, no sweeping arcs, no HUD brackets. The restraint is the point — the theatrical
+geometry, one accent used only for live or on-target data. The restraint is the point — the theatrical
 version reads as costume.
 
 ### Colour

@@ -71,6 +71,10 @@ export function Sparkline({ points, width = 120, height = 32, className = '' }: 
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {/* Faint halo behind the endpoint, breathing in time with the sync dot. */}
+      {settled && !reduced && (
+        <circle cx={last[0]} cy={last[1]} r={4.5} fill="currentColor" className="animate-halo" />
+      )}
       <circle
         cx={last[0]}
         cy={last[1]}

@@ -28,6 +28,20 @@
   .pt-safe {
     padding-top: max(12px, env(safe-area-inset-top));
   }
+
+  /* Emission, not decoration: glow marks lit data, and stays this faint. */
+  .glow-ink {
+    text-shadow: 0 0 14px rgba(230, 237, 238, 0.22);
+  }
+  .glow-live {
+    text-shadow: 0 0 10px rgba(45, 212, 191, 0.4);
+  }
+  .glow-icon {
+    filter: drop-shadow(0 0 5px rgba(45, 212, 191, 0.45));
+  }
+  .bg-ambient {
+    background: radial-gradient(70% 100% at 50% 0%, rgba(45, 212, 191, 0.06), transparent 70%);
+  }
 }
 
 /* Belt and braces: components check usePrefersReducedMotion, and this catches

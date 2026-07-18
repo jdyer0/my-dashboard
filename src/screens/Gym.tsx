@@ -162,7 +162,7 @@ export function Gym() {
                       {names.get(lift.exerciseId) ?? 'Unknown exercise'}
                     </span>
                     <span
-                      className={`text-metric-sm font-mono tabular-nums ${recent ? 'text-live' : 'text-ink'}`}
+                      className={`text-metric-sm font-mono tabular-nums ${recent ? 'glow-live text-live' : 'text-ink'}`}
                     >
                       {fmtKg(lift.e1rmKg)} <span className="text-label text-ink-faint">kg e1RM</span>
                     </span>

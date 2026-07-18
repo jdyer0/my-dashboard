@@ -3,8 +3,8 @@ import { usePrefersReducedMotion } from './usePrefersReducedMotion'
 export type SyncState = 'synced' | 'syncing' | 'stale' | 'error'
 
 const tone: Record<SyncState, string> = {
-  synced: 'bg-live',
-  syncing: 'bg-live',
+  synced: 'bg-live shadow-glow-sm',
+  syncing: 'bg-live shadow-glow-sm',
   stale: 'bg-warn',
   error: 'bg-alert',
 }

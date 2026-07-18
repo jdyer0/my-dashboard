@@ -48,6 +48,9 @@ export default {
     },
     boxShadow: {
       none: 'none',
+      // The only shadows in the app: soft teal emission, never elevation.
+      'glow-sm': '0 0 6px 0 rgba(45, 212, 191, 0.45)',
+      glow: '0 0 14px 0 rgba(45, 212, 191, 0.3)',
     },
     extend: {
       transitionTimingFunction: {
@@ -66,11 +69,32 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.3' },
         },
+        // Ambient wash at the top of the canvas breathes very slowly.
+        breathe: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.55' },
+        },
+        // Glint sweeping the top hairline: moves for ~half the cycle, rests
+        // for the other half. Opacity-gated so it never pops in mid-screen.
+        scan: {
+          '0%': { transform: 'translateX(-30vw)', opacity: '0' },
+          '8%': { opacity: '0.8' },
+          '42%': { opacity: '0.8' },
+          '50%, 100%': { transform: 'translateX(100vw)', opacity: '0' },
+        },
+        // Faint halo behind a live endpoint, phase-locked to the sync dot.
+        halo: {
+          '0%, 100%': { opacity: '0.35' },
+          '50%': { opacity: '0.08' },
+        },
       },
       animation: {
         'boot-in': 'boot-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both',
         'fade-in': 'fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both',
         'pulse-sync': 'pulse-sync 2s ease-in-out infinite',
+        breathe: 'breathe 9s ease-in-out infinite',
+        scan: 'scan 9s cubic-bezier(0.45, 0, 0.55, 1) infinite',
+        halo: 'halo 2s ease-in-out infinite',
       },
     },
   },

@@ -130,7 +130,7 @@ export function GymHistory() {
                             {sets.length} sets · {fmtKg(totalVolumeKg(sets))} kg
                           </span>
                           {prCount > 0 && (
-                            <span className="text-label font-mono tabular-nums text-live">
+                            <span className="glow-live text-label font-mono tabular-nums text-live">
                               {prCount} PR{prCount > 1 ? 's' : ''}
                             </span>
                           )}

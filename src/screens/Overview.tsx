@@ -157,7 +157,7 @@ function MetricTile({ label, children }: { label: string; children: ReactNode })
   return (
     <BootItem className="rounded-card border border-line bg-surface px-2 py-2.5">
       <p className="text-label text-ink-faint">{label}</p>
-      <p className="mt-1 text-metric-sm text-ink">{children}</p>
+      <p className="glow-ink mt-1 text-metric-sm text-ink">{children}</p>
     </BootItem>
   )
 }
@@ -178,7 +178,7 @@ function TargetRow({
     <div>
       <div className="flex items-baseline justify-between">
         <span className="text-label text-ink-faint">{label}</span>
-        <span className={`text-label ${onTarget ? 'text-live' : 'text-ink-dim'}`}>
+        <span className={`text-label ${onTarget ? 'glow-live text-live' : 'text-ink-dim'}`}>
           <CountUp value={value} /> / {max.toLocaleString('en-GB')} {unit}
         </span>
       </div>
@@ -186,7 +186,7 @@ function TargetRow({
         value={value}
         max={max}
         className="mt-1.5"
-        fillClassName={onTarget ? 'bg-live' : 'bg-warn'}
+        fillClassName={onTarget ? 'bg-live shadow-glow-sm' : 'bg-warn'}
       />
     </div>
   )
@@ -227,7 +227,7 @@ export function Overview() {
           {strength.bestName ? (
             <div className="mt-2 flex items-end justify-between">
               <div>
-                <p className="text-metric text-ink">
+                <p className="glow-ink text-metric text-ink">
                   <CountUp value={strength.bestE1rmKg} decimals={1} />
                 </p>
                 <p className="mt-0.5 text-label text-ink-faint">
