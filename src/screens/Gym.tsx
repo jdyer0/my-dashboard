@@ -4,7 +4,7 @@ import { BootItem, BootSequence } from '../motion/BootSequence'
 import { fetchSplitDays, listAllSets, listExercises, listSessions, startSession } from '../gym/data'
 import { bestLifts, totalVolumeKg } from '../gym/e1rm'
 import { clockTime, fmtKg, sessionDate } from '../gym/format'
-import { FOCUS_LABELS } from '../gym/split'
+import { FOCUS_LABELS, WEEKDAY_LABELS } from '../gym/split'
 import { inLondonWeek, londonWeekday } from '../lib/londonDay'
 import type { Exercise, GymSession, GymSet, SplitDay } from '../gym/types'
 
@@ -89,8 +89,12 @@ export function Gym() {
     <BootSequence>
       <div className="mx-auto max-w-md">
         <BootItem>
-          <header className="pb-2 pt-2">
+          <header className="flex items-baseline justify-between pb-2 pt-2">
             <h1 className="text-screen-title text-ink">Gym</h1>
+            <span className="text-label text-ink-dim">
+              {WEEKDAY_LABELS[londonWeekday(now)]}
+              {todayFocus ? ` · ${FOCUS_LABELS[todayFocus]}` : ''}
+            </span>
           </header>
         </BootItem>
 
@@ -121,22 +125,27 @@ export function Gym() {
         </BootItem>
 
         <BootItem className="mt-2.5">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Link
               to="/gym/coach"
-              className="rounded-card border border-line bg-surface px-3 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="rounded-card border border-line bg-surface px-2.5 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
               <span className="block text-body text-ink">Coach</span>
-              <span className="block text-label text-ink-faint">Progression advice</span>
+              <span className="block text-label text-ink-faint">Progression</span>
             </Link>
             <Link
               to="/gym/split"
-              className="rounded-card border border-line bg-surface px-3 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="rounded-card border border-line bg-surface px-2.5 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
               <span className="block text-body text-ink">Split</span>
-              <span className="block text-label text-ink-faint">
-                {todayFocus ? `Today · ${FOCUS_LABELS[todayFocus]}` : 'Plan your week'}
-              </span>
+              <span className="block text-label text-ink-faint">Weekly plan</span>
+            </Link>
+            <Link
+              to="/gym/exercises"
+              className="rounded-card border border-line bg-surface px-2.5 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+            >
+              <span className="block text-body text-ink">Exercises</span>
+              <span className="block text-label text-ink-faint">Ranges, increments</span>
             </Link>
           </div>
         </BootItem>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  addExercise,
   addSplitTemplateExercise,
   fetchSplitTemplates,
   listExercises,
@@ -19,7 +18,6 @@ export function GymSplitTemplate() {
   const [templates, setTemplates] = useState<SplitTemplateExercise[]>([])
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
 
   useEffect(() => {
@@ -57,34 +55,20 @@ export function GymSplitTemplate() {
   const names = new Map(exercises.map((e) => [e.id, e.name]))
   const inTemplate = templates.filter((t) => t.focus === focus)
   const templateExerciseIds = new Set(inTemplate.map((t) => t.exercise_id))
+  const available = exercises.filter((e) => !templateExerciseIds.has(e.id))
 
-  async function add(exercise: Exercise) {
-    if (adding || templateExerciseIds.has(exercise.id)) return
+  async function add(exerciseId: string) {
+    if (adding || !exerciseId) return
     setAdding(true)
     setFailed(null)
     try {
       const position = Math.max(0, ...inTemplate.map((t) => t.position)) + 1
-      const row = await addSplitTemplateExercise(focus as typeof inTemplate[number]['focus'], exercise.id, position)
+      const row = await addSplitTemplateExercise(
+        focus as (typeof inTemplate)[number]['focus'],
+        exerciseId,
+        position,
+      )
       setTemplates((prev) => [...prev, row])
-      setSearch('')
-    } catch {
-      setFailed("Couldn't add the exercise. Try again.")
-    } finally {
-      setAdding(false)
-    }
-  }
-
-  async function createAndAdd(name: string) {
-    if (adding) return
-    setAdding(true)
-    setFailed(null)
-    try {
-      const exercise = await addExercise(name)
-      setExercises((prev) => [...prev, exercise].sort((a, b) => a.name.localeCompare(b.name)))
-      const position = Math.max(0, ...inTemplate.map((t) => t.position)) + 1
-      const row = await addSplitTemplateExercise(focus as typeof inTemplate[number]['focus'], exercise.id, position)
-      setTemplates((prev) => [...prev, row])
-      setSearch('')
     } catch {
       setFailed("Couldn't add the exercise. Try again.")
     } finally {
@@ -101,14 +85,6 @@ export function GymSplitTemplate() {
       setFailed("Couldn't remove the exercise. Try again.")
     }
   }
-
-  const query = search.trim().toLowerCase()
-  const matches = query
-    ? exercises.filter(
-        (e) => e.name.toLowerCase().includes(query) && !templateExerciseIds.has(e.id),
-      )
-    : []
-  const exactMatch = exercises.some((e) => e.name.toLowerCase() === query)
 
   return (
     <div className="mx-auto max-w-md">
@@ -129,7 +105,9 @@ export function GymSplitTemplate() {
                 key={t.id}
                 className="flex min-h-[44px] items-center justify-between border-b border-line py-1 last:border-b-0"
               >
-                <span className="text-body text-ink">{names.get(t.exercise_id) ?? 'Unknown exercise'}</span>
+                <span className="text-body text-ink">
+                  {names.get(t.exercise_id) ?? 'Unknown exercise'}
+                </span>
                 <button
                   type="button"
                   onClick={() => void remove(t.id)}
@@ -144,47 +122,42 @@ export function GymSplitTemplate() {
         )}
       </section>
 
-      <section className="mt-2.5 rounded-card border border-line bg-surface p-3">
-        <label htmlFor="template-search" className="text-label text-ink-faint">
+      <div className="mt-2.5">
+        <label htmlFor="template-add" className="text-label text-ink-faint">
           Add exercise
         </label>
-        <input
-          id="template-search"
-          type="text"
-          placeholder="Search or add"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink placeholder:text-ink-faint focus:border-line-bright"
-        />
-        {query && (
-          <ul className="mt-1">
-            {matches.map((exercise) => (
-              <li key={exercise.id}>
-                <button
-                  type="button"
-                  onClick={() => void add(exercise)}
-                  disabled={adding}
-                  className="flex min-h-[44px] w-full items-center border-b border-line py-2 text-left text-body text-ink last:border-b-0 disabled:text-ink-faint"
-                >
-                  {exercise.name}
-                </button>
-              </li>
-            ))}
-            {!exactMatch && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => void createAndAdd(search.trim())}
-                  disabled={adding}
-                  className="flex min-h-[44px] w-full items-center py-2 text-left text-body text-live disabled:text-ink-faint"
-                >
-                  Add "{search.trim()}"
-                </button>
-              </li>
+        {available.length === 0 ? (
+          <p className="mt-1.5 text-body text-ink-dim">
+            {exercises.length === 0 ? (
+              <>
+                No exercises yet.{' '}
+                <Link to="/gym/exercises" className="text-ink underline decoration-line-bright">
+                  Create them on the exercises screen
+                </Link>
+              </>
+            ) : (
+              'Every exercise is already in this template'
             )}
-          </ul>
+          </p>
+        ) : (
+          <select
+            id="template-add"
+            value=""
+            disabled={adding}
+            onChange={(e) => void add(e.target.value)}
+            className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright disabled:text-ink-faint"
+          >
+            <option value="" disabled>
+              Choose exercise
+            </option>
+            {available.map((exercise) => (
+              <option key={exercise.id} value={exercise.id}>
+                {exercise.name}
+              </option>
+            ))}
+          </select>
         )}
-      </section>
+      </div>
 
       {failed && <p className="mt-2 text-body text-alert">{failed}</p>}
     </div>

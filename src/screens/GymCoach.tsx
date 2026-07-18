@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { listAllSets, listExercises, updateExerciseSettings } from '../gym/data'
 import { adviseProgression } from '../gym/coach'
 import { fmtKg, sessionDate } from '../gym/format'
@@ -70,7 +71,6 @@ export function GymCoach() {
   const [failed, setFailed] = useState<string | null>(null)
 
   const [current, setCurrent] = useState<Exercise | null>(null)
-  const [search, setSearch] = useState('')
   const [weight, setWeight] = useState('20')
   const [reps, setReps] = useState('8')
   const [increment, setIncrement] = useState('2.5')
@@ -103,7 +103,6 @@ export function GymCoach() {
 
   function pickExercise(exercise: Exercise) {
     setCurrent(exercise)
-    setSearch('')
     setIncrement(String(exercise.increment_kg))
     setRangeMin(String(exercise.rep_range_min))
     setRangeMax(String(exercise.rep_range_max))
@@ -158,11 +157,6 @@ export function GymCoach() {
     ) : null
   }
 
-  const query = search.trim().toLowerCase()
-  const matches = query
-    ? exercises.filter((e) => e.name.toLowerCase().includes(query))
-    : exercises
-
   return (
     <div className="mx-auto max-w-md">
       <header className="pb-2 pt-2">
@@ -172,21 +166,41 @@ export function GymCoach() {
         </p>
       </header>
 
-      {current ? (
-        <>
-          <section className="rounded-card border border-line bg-surface p-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-card-title text-ink">{current.name}</h2>
-              <button
-                type="button"
-                onClick={() => setCurrent(null)}
-                className="min-h-[44px] px-2 text-label text-ink-dim"
-              >
-                Change exercise
-              </button>
-            </div>
+      <label htmlFor="coach-select" className="text-label text-ink-faint">
+        Exercise
+      </label>
+      {exercises.length === 0 ? (
+        <p className="mt-1.5 text-body text-ink-dim">
+          No exercises yet.{' '}
+          <Link to="/gym/exercises" className="text-ink underline decoration-line-bright">
+            Create them on the exercises screen
+          </Link>
+        </p>
+      ) : (
+        <select
+          id="coach-select"
+          value={current?.id ?? ''}
+          onChange={(e) => {
+            const exercise = exercises.find((ex) => ex.id === e.target.value)
+            if (exercise) pickExercise(exercise)
+          }}
+          className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright"
+        >
+          <option value="" disabled>
+            Choose exercise
+          </option>
+          {exercises.map((exercise) => (
+            <option key={exercise.id} value={exercise.id}>
+              {exercise.name}
+            </option>
+          ))}
+        </select>
+      )}
 
-            <p className="mt-1 text-label text-ink-faint">
+      {current && (
+        <>
+          <section className="mt-2.5 rounded-card border border-line bg-surface p-3">
+            <p className="text-label text-ink-faint">
               Last set:{' '}
               {lastSet ? (
                 <span className="font-mono tabular-nums text-ink-dim">
@@ -307,39 +321,6 @@ export function GymCoach() {
 
           {failed && <p className="mt-2 text-body text-alert">{failed}</p>}
         </>
-      ) : (
-        <section className="rounded-card border border-line bg-surface p-3">
-          <label htmlFor="coach-search" className="text-label text-ink-faint">
-            Exercise
-          </label>
-          <input
-            id="coach-search"
-            type="text"
-            placeholder="Search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink placeholder:text-ink-faint focus:border-line-bright"
-          />
-          {exercises.length === 0 ? (
-            <p className="py-6 text-center text-body text-ink-dim">
-              Log a workout first — the coach works from your history
-            </p>
-          ) : (
-            <ul className="mt-1">
-              {matches.map((exercise) => (
-                <li key={exercise.id}>
-                  <button
-                    type="button"
-                    onClick={() => pickExercise(exercise)}
-                    className="flex min-h-[44px] w-full items-center border-b border-line py-2 text-left text-body text-ink last:border-b-0"
-                  >
-                    {exercise.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       )}
     </div>
   )
