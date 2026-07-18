@@ -1,0 +1,15 @@
+node_modules
+dist
+dev-dist
+*.local
+
+# env — .env.example is the only env file that gets committed
+.env
+.env.*
+!.env.example
+
+# supabase local state
+supabase/.temp
+supabase/.branches
+
+.DS_Store
