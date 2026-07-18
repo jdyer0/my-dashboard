@@ -6,6 +6,9 @@ import { BootGuardProvider } from './motion/BootSequence'
 import { AppShell } from './shell/AppShell'
 import { EmptyModule } from './shell/EmptyModule'
 import { Overview } from './screens/Overview'
+import { Gym } from './screens/Gym'
+import { GymSession } from './screens/GymSession'
+import { GymSessionDetail } from './screens/GymSessionDetail'
 
 function Gate() {
   const auth = useAuth()
@@ -17,10 +20,9 @@ function Gate() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Overview />} />
-        <Route
-          path="gym"
-          element={<EmptyModule title="Gym" invitation="Log your first workout" />}
-        />
+        <Route path="gym" element={<Gym />} />
+        <Route path="gym/session" element={<GymSession />} />
+        <Route path="gym/session/:id" element={<GymSessionDetail />} />
         <Route
           path="food"
           element={<EmptyModule title="Food" invitation="Log your first meal" />}
