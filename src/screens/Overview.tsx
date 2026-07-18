@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BootSequence, BootItem } from '../motion/BootSequence'
 import { CountUp } from '../motion/CountUp'
 import { Sparkline } from '../motion/Sparkline'
 import { Bar } from '../motion/Bar'
 import { SyncDot } from '../motion/SyncDot'
+import { listAllSets, listExercises, listSessions } from '../gym/data'
+import { bestLifts, bestPerSession } from '../gym/e1rm'
+import { inLondonWeek } from '../lib/londonDay'
 
 const gbp = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
 
@@ -14,17 +17,66 @@ const dateFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Europe/London',
 })
 
-// Placeholder values — Phase 0 proves the layout and motion; real data
-// replaces these as each module lands.
+// Placeholder values — real data replaces these as each module lands.
+// Gym (Phase 1) is live; kcal, balance, protein and steps wait for
+// Phases 2–4.
 const placeholder = {
-  sessions: 3,
   kcal: 1842,
   balancePence: 243152,
-  strengthTrend: [92.5, 94, 93.5, 95, 96.5, 96, 97.5, 99, 98.5, 100, 101.5, 102.5],
   proteinG: 121,
   proteinTargetG: 150,
   steps: 8420,
   stepsTarget: 10000,
+}
+
+interface Strength {
+  sessionsThisWeek: number
+  bestName: string | null
+  bestE1rmKg: number
+  trend: number[]
+}
+
+function useStrength(): Strength {
+  const [strength, setStrength] = useState<Strength>({
+    sessionsThisWeek: 0,
+    bestName: null,
+    bestE1rmKg: 0,
+    trend: [],
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [sessions, sets, exercises] = await Promise.all([
+          listSessions(),
+          listAllSets(),
+          listExercises(),
+        ])
+        if (cancelled) return
+        const now = new Date()
+        const sessionsThisWeek = sessions.filter((s) => inLondonWeek(s.started_at, now)).length
+        const best = bestLifts(sets)[0]
+        setStrength({
+          sessionsThisWeek,
+          bestName: best
+            ? (exercises.find((e) => e.id === best.exerciseId)?.name ?? null)
+            : null,
+          bestE1rmKg: best?.e1rmKg ?? 0,
+          trend: best ? bestPerSession(sets, best.exerciseId).slice(-12) : [],
+        })
+      } catch {
+        // The overview stays quiet on failure — zeros, no error banner.
+        // The gym tab is where a load failure gets surfaced and retried.
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return strength
 }
 
 function MetricTile({ label, children }: { label: string; children: ReactNode }) {
@@ -68,6 +120,7 @@ function TargetRow({
 
 export function Overview() {
   const today = dateFormat.format(new Date())
+  const strength = useStrength()
 
   return (
     <BootSequence>
@@ -84,7 +137,7 @@ export function Overview() {
 
         <div className="grid grid-cols-3 gap-2">
           <MetricTile label="Sessions">
-            <CountUp value={placeholder.sessions} />
+            <CountUp value={strength.sessionsThisWeek} />
           </MetricTile>
           <MetricTile label="Kcal today">
             <CountUp value={placeholder.kcal} />
@@ -96,15 +149,23 @@ export function Overview() {
 
         <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
           <h2 className="text-card-title text-ink">Strength</h2>
-          <div className="mt-2 flex items-end justify-between">
-            <div>
-              <p className="text-metric text-ink">
-                <CountUp value={102.5} decimals={1} />
-              </p>
-              <p className="mt-0.5 text-label text-ink-faint">e1RM kg, best lift</p>
+          {strength.bestName ? (
+            <div className="mt-2 flex items-end justify-between">
+              <div>
+                <p className="text-metric text-ink">
+                  <CountUp value={strength.bestE1rmKg} decimals={1} />
+                </p>
+                <p className="mt-0.5 text-label text-ink-faint">
+                  e1RM kg, {strength.bestName.toLowerCase()}
+                </p>
+              </div>
+              {strength.trend.length >= 2 && (
+                <Sparkline points={strength.trend} className="text-ink-dim" />
+              )}
             </div>
-            <Sparkline points={placeholder.strengthTrend} className="text-ink-dim" />
-          </div>
+          ) : (
+            <p className="mt-2 text-body text-ink-dim">Log your first workout</p>
+          )}
         </BootItem>
 
         <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
