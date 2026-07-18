@@ -26,6 +26,14 @@ export function londonWeekStartKey(date: Date): string {
   return anchor.toISOString().slice(0, 10)
 }
 
+/** Weekday of the London calendar day: 0 = Monday … 6 = Sunday. */
+export function londonWeekday(date: Date): number {
+  const key = londonDayKey(date)
+  const [y, m, d] = key.split('-').map(Number)
+  if (y === undefined || m === undefined || d === undefined) throw new Error(`Bad day key ${key}`)
+  return (new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay() + 6) % 7
+}
+
 /** The last `n` London day keys ending today, oldest first. */
 export function recentLondonDayKeys(now: Date, n: number): string[] {
   const key = londonDayKey(now)

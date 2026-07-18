@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { inLondonWeek, londonDayKey, londonWeekStartKey, recentLondonDayKeys } from './londonDay'
+import {
+  inLondonWeek,
+  londonDayKey,
+  londonWeekday,
+  londonWeekStartKey,
+  recentLondonDayKeys,
+} from './londonDay'
 
 describe('londonDayKey', () => {
   it('rolls a late UTC evening into the next London day during BST', () => {
@@ -25,6 +31,19 @@ describe('londonWeekStartKey', () => {
   it('rolls Sunday 23:30 UTC into the next week during BST', () => {
     // Sunday 19 July 23:30 UTC is Monday 20 July 00:30 BST.
     expect(londonWeekStartKey(new Date('2026-07-19T23:30:00Z'))).toBe('2026-07-20')
+  })
+})
+
+describe('londonWeekday', () => {
+  it('is Monday-based', () => {
+    // 2026-07-13 is a Monday, 2026-07-18 a Saturday.
+    expect(londonWeekday(new Date('2026-07-13T12:00:00Z'))).toBe(0)
+    expect(londonWeekday(new Date('2026-07-18T12:00:00Z'))).toBe(5)
+  })
+
+  it('rolls into the next weekday with the London day during BST', () => {
+    // Saturday 23:30 UTC is Sunday 00:30 in London.
+    expect(londonWeekday(new Date('2026-07-18T23:30:00Z'))).toBe(6)
   })
 })
 
