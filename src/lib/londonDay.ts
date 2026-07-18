@@ -26,6 +26,21 @@ export function londonWeekStartKey(date: Date): string {
   return anchor.toISOString().slice(0, 10)
 }
 
+/** The last `n` London day keys ending today, oldest first. */
+export function recentLondonDayKeys(now: Date, n: number): string[] {
+  const key = londonDayKey(now)
+  const [y, m, d] = key.split('-').map(Number)
+  if (y === undefined || m === undefined || d === undefined) throw new Error(`Bad day key ${key}`)
+  const anchor = new Date(Date.UTC(y, m - 1, d, 12))
+  const keys: string[] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const day = new Date(anchor)
+    day.setUTCDate(day.getUTCDate() - i)
+    keys.push(day.toISOString().slice(0, 10))
+  }
+  return keys
+}
+
 /** True when the instant falls in the same London week (Mon–Sun) as `now`. */
 export function inLondonWeek(iso: string, now: Date): boolean {
   return londonWeekStartKey(new Date(iso)) === londonWeekStartKey(now)

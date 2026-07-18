@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inLondonWeek, londonDayKey, londonWeekStartKey } from './londonDay'
+import { inLondonWeek, londonDayKey, londonWeekStartKey, recentLondonDayKeys } from './londonDay'
 
 describe('londonDayKey', () => {
   it('rolls a late UTC evening into the next London day during BST', () => {
@@ -25,6 +25,24 @@ describe('londonWeekStartKey', () => {
   it('rolls Sunday 23:30 UTC into the next week during BST', () => {
     // Sunday 19 July 23:30 UTC is Monday 20 July 00:30 BST.
     expect(londonWeekStartKey(new Date('2026-07-19T23:30:00Z'))).toBe('2026-07-20')
+  })
+})
+
+describe('recentLondonDayKeys', () => {
+  it('ends on the London day, not the UTC day', () => {
+    // 23:30 UTC on 18 July is already 19 July in London.
+    expect(recentLondonDayKeys(new Date('2026-07-18T23:30:00Z'), 3)).toEqual([
+      '2026-07-17',
+      '2026-07-18',
+      '2026-07-19',
+    ])
+  })
+
+  it('crosses month boundaries', () => {
+    expect(recentLondonDayKeys(new Date('2026-08-01T12:00:00Z'), 2)).toEqual([
+      '2026-07-31',
+      '2026-08-01',
+    ])
   })
 })
 
