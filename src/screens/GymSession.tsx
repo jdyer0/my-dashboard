@@ -9,7 +9,6 @@ import {
   finishSession,
   listAllSets,
   listExercises,
-  updateExerciseSettings,
 } from '../gym/data'
 import { adviseProgression } from '../gym/coach'
 import { bestLifts, e1rm, prSetIds } from '../gym/e1rm'
@@ -55,7 +54,7 @@ function SetRow({
       </span>
       <span className="flex items-center gap-2">
         <span
-          className={`text-label font-mono tabular-nums ${isPr ? 'text-live' : 'text-ink-faint'}`}
+          className={`text-label font-mono tabular-nums ${isPr ? 'glow-live text-live' : 'text-ink-faint'}`}
         >
           {isPr ? 'PR ' : ''}e1RM {fmtKg(e1rm(set.weight_kg, set.reps))}
         </span>
@@ -85,9 +84,6 @@ export function GymSession() {
   const [addingNew, setAddingNew] = useState(false)
   const [weight, setWeight] = useState('20')
   const [reps, setReps] = useState('8')
-  const [increment, setIncrement] = useState('2.5')
-  const [rangeMin, setRangeMin] = useState('8')
-  const [rangeMax, setRangeMax] = useState('12')
   const [saving, setSaving] = useState(false)
   const [finishing, setFinishing] = useState(false)
 
@@ -160,9 +156,6 @@ export function GymSession() {
   function selectExercise(exercise: Exercise) {
     setCurrentId(exercise.id)
     setNewName('')
-    setIncrement(String(exercise.increment_kg))
-    setRangeMin(String(exercise.rep_range_min))
-    setRangeMax(String(exercise.rep_range_max))
     const last = [...allSets].reverse().find((s) => s.exercise_id === exercise.id)
     if (last) {
       setWeight(String(last.weight_kg))
@@ -193,20 +186,6 @@ export function GymSession() {
     } finally {
       setAddingNew(false)
     }
-  }
-
-  function persistSettings(next: { increment: string; min: string; max: string }) {
-    if (!current) return
-    const incrementKg = parseWeight(next.increment)
-    const min = parseCount(next.min)
-    const max = parseCount(next.max)
-    if (incrementKg === null || incrementKg <= 0 || min === null || max === null || max < min)
-      return
-    const settings = { increment_kg: incrementKg, rep_range_min: min, rep_range_max: max }
-    setExercises((prev) => prev.map((e) => (e.id === current.id ? { ...e, ...settings } : e)))
-    updateExerciseSettings(current.id, settings).catch(() =>
-      setFailed("Couldn't save the exercise settings. They'll reset next time."),
-    )
   }
 
   function applyHint() {
@@ -366,52 +345,14 @@ export function GymSession() {
             </div>
           )}
 
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <div>
-              <label htmlFor="session-increment" className="text-label text-ink-faint">
-                Increment kg
-              </label>
-              <input
-                id="session-increment"
-                inputMode="decimal"
-                value={increment}
-                onChange={(e) => {
-                  setIncrement(e.target.value)
-                  persistSettings({ increment: e.target.value, min: rangeMin, max: rangeMax })
-                }}
-                className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
-              />
-            </div>
-            <div>
-              <label htmlFor="session-range-min" className="text-label text-ink-faint">
-                Reps from
-              </label>
-              <input
-                id="session-range-min"
-                inputMode="numeric"
-                value={rangeMin}
-                onChange={(e) => {
-                  setRangeMin(e.target.value)
-                  persistSettings({ increment, min: e.target.value, max: rangeMax })
-                }}
-                className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
-              />
-            </div>
-            <div>
-              <label htmlFor="session-range-max" className="text-label text-ink-faint">
-                Reps to
-              </label>
-              <input
-                id="session-range-max"
-                inputMode="numeric"
-                value={rangeMax}
-                onChange={(e) => {
-                  setRangeMax(e.target.value)
-                  persistSettings({ increment, min: rangeMin, max: e.target.value })
-                }}
-                className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
-              />
-            </div>
+          {/* Read-only: range and increment are edited on the exercises or
+              coach screens, not mid-session. */}
+          <div className="mt-1 flex items-baseline justify-between">
+            <span className="text-label text-ink-faint">Rep range</span>
+            <span className="text-label font-mono tabular-nums text-ink-dim">
+              {current.rep_range_min}–{current.rep_range_max} · {fmtKg(current.increment_kg)} kg
+              steps
+            </span>
           </div>
 
           {hint && (
