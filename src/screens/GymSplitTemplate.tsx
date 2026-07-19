@@ -46,7 +46,7 @@ export function GymSplitTemplate() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
@@ -87,7 +87,7 @@ export function GymSplitTemplate() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">{FOCUS_LABELS[focus]} day</h1>
         <p className="mt-0.5 text-label text-ink-faint">

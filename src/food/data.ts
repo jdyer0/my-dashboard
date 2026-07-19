@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { NutrientDef, Per100g, RniTarget } from '../lib/nutrition'
+import type { ParsedMealItem } from './mealParse'
 import type { FdcResult, Food, FoodLogEntry, NutritionSettings, Profile } from './types'
 
 const FOOD_COLS = 'id, name, brand, source, per_100g, default_portion_g, portion_label'
@@ -48,10 +49,12 @@ export async function saveProfile(sex: 'male' | 'female', birthDate: string): Pr
 export async function fetchSettings(): Promise<NutritionSettings> {
   const { data, error } = await supabase
     .from('nutrition_settings')
-    .select('kcal_target, protein_g_target')
+    .select('kcal_target, protein_g_target, carb_g_target, fat_g_target')
     .maybeSingle()
   if (error) throw error
-  return data ?? { kcal_target: null, protein_g_target: null }
+  return (
+    data ?? { kcal_target: null, protein_g_target: null, carb_g_target: null, fat_g_target: null }
+  )
 }
 
 export async function saveSettings(settings: NutritionSettings): Promise<void> {
@@ -106,6 +109,29 @@ export async function recentFoods(): Promise<Food[]> {
     .sort((a, b) => b.count - a.count || a.firstSeen - b.firstSeen)
     .slice(0, 20)
     .map((c) => c.food)
+}
+
+/** Sends a meal description to the meal-parse Edge Function (Gemini free
+    tier) and maps the result onto the rule-parser's item shape, so the chat
+    screen treats both parsers identically. Throws when the function is
+    unreachable — callers fall back to parseMealText. */
+export async function parseMealRemote(text: string): Promise<ParsedMealItem[]> {
+  const { data, error } = await supabase.functions.invoke('meal-parse', {
+    body: { text },
+  })
+  if (error) throw error
+  const items = (data as { items: { name: string; search_term: string; amount_g: number }[] })
+    .items
+  return items.map((item) => ({
+    raw: item.name,
+    query: item.search_term
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    grams: Math.max(1, Math.round(item.amount_g)),
+    count: null,
+  }))
 }
 
 export async function fdcSearch(q: string): Promise<FdcResult[]> {

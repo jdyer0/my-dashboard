@@ -1,5 +1,7 @@
 import {
   ageInYears,
+  carbTargetG,
+  fatTargetG,
   kcalTargetDefault,
   targetFor,
   type RniTarget,
@@ -9,6 +11,8 @@ import type { NutritionSettings, Profile } from './types'
 export interface ResolvedTargets {
   kcalTarget: number
   proteinTargetG: number
+  carbTargetG: number
+  fatTargetG: number
   sex: 'male' | 'female'
   ageYears: number
 }
@@ -28,5 +32,12 @@ export function resolveTargets(
   const kcalTarget = settings.kcal_target ?? kcalTargetDefault(profile.sex)
   const proteinTargetG =
     settings.protein_g_target ?? targetFor(rni, 'protein', profile.sex, ageYears) ?? 50
-  return { kcalTarget, proteinTargetG, sex: profile.sex, ageYears }
+  return {
+    kcalTarget,
+    proteinTargetG,
+    carbTargetG: settings.carb_g_target ?? carbTargetG(kcalTarget),
+    fatTargetG: settings.fat_g_target ?? fatTargetG(kcalTarget),
+    sex: profile.sex,
+    ageYears,
+  }
 }

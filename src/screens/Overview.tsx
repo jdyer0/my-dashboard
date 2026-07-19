@@ -4,10 +4,17 @@ import { CountUp } from '../motion/CountUp'
 import { Sparkline } from '../motion/Sparkline'
 import { Bar } from '../motion/Bar'
 import { SyncDot } from '../motion/SyncDot'
+import { Clock } from '../motion/Clock'
 import { listAllSets, listExercises, listSessions } from '../gym/data'
 import { bestLifts, bestPerSession } from '../gym/e1rm'
 import { inLondonWeek, londonDayKey, recentLondonDayKeys } from '../lib/londonDay'
-import { fetchNutrientDefs, fetchProfile, fetchRecentLog, fetchRniTargets, fetchSettings } from '../food/data'
+import {
+  fetchNutrientDefs,
+  fetchProfile,
+  fetchRecentLog,
+  fetchRniTargets,
+  fetchSettings,
+} from '../food/data'
 import { resolveTargets } from '../food/targets'
 import { averageDailyIntake, nutrientTotal, targetFor } from '../lib/nutrition'
 
@@ -59,9 +66,7 @@ function useStrength(): Strength {
         const best = bestLifts(sets)[0]
         setStrength({
           sessionsThisWeek,
-          bestName: best
-            ? (exercises.find((e) => e.id === best.exerciseId)?.name ?? null)
-            : null,
+          bestName: best ? (exercises.find((e) => e.id === best.exerciseId)?.name ?? null) : null,
           bestE1rmKg: best?.e1rmKg ?? 0,
           trend: best ? bestPerSession(sets, best.exerciseId).slice(-12) : [],
         })
@@ -187,6 +192,7 @@ function TargetRow({
         max={max}
         className="mt-1.5"
         fillClassName={onTarget ? 'bg-live shadow-glow-sm' : 'bg-warn'}
+        shimmer={onTarget}
       />
     </div>
   )
@@ -199,13 +205,13 @@ export function Overview() {
 
   return (
     <BootSequence>
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <BootItem>
           <header className="flex items-center justify-between pb-2 pt-2">
             <h1 className="text-screen-title text-ink">{today}</h1>
-            <span className="flex items-center gap-1.5 text-label text-ink-faint">
+            <span className="flex items-center gap-2">
               <SyncDot state="synced" />
-              synced
+              <Clock className="text-label text-ink-dim" />
             </span>
           </header>
         </BootItem>
@@ -222,54 +228,56 @@ export function Overview() {
           </MetricTile>
         </div>
 
-        <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
-          <h2 className="text-card-title text-ink">Strength</h2>
-          {strength.bestName ? (
-            <div className="mt-2 flex items-end justify-between">
-              <div>
-                <p className="glow-ink text-metric text-ink">
-                  <CountUp value={strength.bestE1rmKg} decimals={1} />
-                </p>
-                <p className="mt-0.5 text-label text-ink-faint">
-                  e1RM kg, {strength.bestName.toLowerCase()}
-                </p>
+        <div className="mt-2.5 grid gap-2.5 md:grid-cols-2">
+          <BootItem className="rounded-card border border-line bg-surface p-3">
+            <h2 className="text-card-title text-ink">Strength</h2>
+            {strength.bestName ? (
+              <div className="mt-2 flex items-end justify-between">
+                <div>
+                  <p className="glow-ink text-metric text-ink">
+                    <CountUp value={strength.bestE1rmKg} decimals={1} />
+                  </p>
+                  <p className="mt-0.5 text-label text-ink-faint">
+                    e1RM kg, {strength.bestName.toLowerCase()}
+                  </p>
+                </div>
+                {strength.trend.length >= 2 && (
+                  <Sparkline points={strength.trend} className="text-ink-dim" />
+                )}
               </div>
-              {strength.trend.length >= 2 && (
-                <Sparkline points={strength.trend} className="text-ink-dim" />
+            ) : (
+              <p className="mt-2 text-body text-ink-dim">Log your first workout</p>
+            )}
+          </BootItem>
+
+          <BootItem className="rounded-card border border-line bg-surface p-3">
+            <h2 className="text-card-title text-ink">Today</h2>
+            <div className="mt-3 space-y-3">
+              {nutrition.proteinTargetG !== null && (
+                <TargetRow
+                  label="Protein"
+                  value={Math.round(nutrition.proteinToday)}
+                  max={Math.round(nutrition.proteinTargetG)}
+                  unit="g"
+                />
+              )}
+              <TargetRow
+                label="Steps"
+                value={placeholder.steps}
+                max={placeholder.stepsTarget}
+                unit=""
+              />
+              {nutrition.worstMicro && (
+                <div className="flex items-baseline justify-between">
+                  <span className="text-label text-ink-faint">Lowest micronutrient, 7 days</span>
+                  <span className="text-label font-mono tabular-nums text-warn">
+                    {nutrition.worstMicro.name} {Math.round(nutrition.worstMicro.pct)}%
+                  </span>
+                </div>
               )}
             </div>
-          ) : (
-            <p className="mt-2 text-body text-ink-dim">Log your first workout</p>
-          )}
-        </BootItem>
-
-        <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
-          <h2 className="text-card-title text-ink">Today</h2>
-          <div className="mt-3 space-y-3">
-            {nutrition.proteinTargetG !== null && (
-              <TargetRow
-                label="Protein"
-                value={Math.round(nutrition.proteinToday)}
-                max={Math.round(nutrition.proteinTargetG)}
-                unit="g"
-              />
-            )}
-            <TargetRow
-              label="Steps"
-              value={placeholder.steps}
-              max={placeholder.stepsTarget}
-              unit=""
-            />
-            {nutrition.worstMicro && (
-              <div className="flex items-baseline justify-between">
-                <span className="text-label text-ink-faint">Lowest micronutrient, 7 days</span>
-                <span className="text-label font-mono tabular-nums text-warn">
-                  {nutrition.worstMicro.name} {Math.round(nutrition.worstMicro.pct)}%
-                </span>
-              </div>
-            )}
-          </div>
-        </BootItem>
+          </BootItem>
+        </div>
       </div>
     </BootSequence>
   )

@@ -65,15 +65,15 @@ export function nutrientTotal(entries: LoggedFood[], key: string): NutrientTotal
 }
 
 /**
- * Average daily intake over a window, or null for "insufficient data" when
- * more than half of the logged foods lack data for the nutrient. Never
- * present a number built mostly from missing values.
+ * Average daily intake over a window, from whatever foods carry the nutrient.
+ * Partial data is shown: the figure is null only when no logged food has any
+ * value for the nutrient (genuinely unknown), never a fabricated zero. When
+ * some foods lack the nutrient the total is under-counted, not wrong.
  */
 export function averageDailyIntake(entries: LoggedFood[], key: string, days: number): number | null {
   if (entries.length === 0 || days <= 0) return null
-  const { value, known, total } = nutrientTotal(entries, key)
-  const lacking = total - known
-  if (lacking > total / 2) return null
+  const { value, known } = nutrientTotal(entries, key)
+  if (known === 0) return null
   return value / days
 }
 
@@ -133,6 +133,29 @@ export function fatTargetG(kcalTarget: number): number {
 }
 
 export const FIBRE_TARGET_G = 30
+
+// The micronutrients tracked against UK RNI (nutrient_defs where kind='micro').
+// Kept in sync with migration 0003's seed; used to prefer micro-rich foods.
+export const MICRO_KEYS = [
+  'iron',
+  'calcium',
+  'magnesium',
+  'zinc',
+  'potassium',
+  'selenium',
+  'iodine',
+  'vitamin_a',
+  'vitamin_d',
+  'vitamin_b12',
+  'folate',
+  'vitamin_c',
+] as const
+
+/** How many tracked micronutrients a food carries a value for. Trace counts
+    as present — it is a known measurement, not missing data. */
+export function microDataCount(per100g: Per100g): number {
+  return MICRO_KEYS.reduce((n, key) => (per100g[key] ? n + 1 : n), 0)
+}
 
 export interface Contribution {
   name: string

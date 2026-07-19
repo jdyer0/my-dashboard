@@ -51,7 +51,7 @@ export function GymSplit() {
 
   if (failed && !loaded) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">Couldn't load your split. Go back and retry.</p>
       </div>
     )
@@ -63,7 +63,7 @@ export function GymSplit() {
   const names = new Map(exercises.map((e) => [e.id, e.name]))
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">Split</h1>
         <p className="mt-0.5 text-label text-ink-faint">Tap a day to set its focus</p>

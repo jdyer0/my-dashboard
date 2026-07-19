@@ -40,7 +40,7 @@ function Stepper({
           type="button"
           onClick={() => onStep(-1)}
           aria-label={`Reduce ${label.toLowerCase()}`}
-          className="h-11 w-11 shrink-0 rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          className="h-11 w-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
         >
           −
         </button>
@@ -55,7 +55,7 @@ function Stepper({
           type="button"
           onClick={() => onStep(1)}
           aria-label={`Increase ${label.toLowerCase()}`}
-          className="h-11 w-11 shrink-0 rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          className="h-11 w-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
         >
           +
         </button>
@@ -151,14 +151,14 @@ export function GymCoach() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">Coach</h1>
         <p className="mt-0.5 text-label text-ink-faint">

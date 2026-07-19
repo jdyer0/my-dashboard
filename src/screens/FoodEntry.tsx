@@ -48,7 +48,7 @@ export function FoodEntry() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">Couldn't load the entry. Go back and retry.</p>
       </div>
     )
@@ -89,7 +89,7 @@ export function FoodEntry() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">{entry.foods.name}</h1>
         {entry.foods.brand && (
@@ -116,7 +116,7 @@ export function FoodEntry() {
               onClick={() =>
                 setAmount(String(Math.round(entry.foods.default_portion_g * mult * 10) / 10))
               }
-              className="h-11 rounded-ctl border border-line bg-surface-raised text-body font-mono tabular-nums text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="h-11 btn-glow rounded-ctl border border-line bg-surface-raised text-body font-mono tabular-nums text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
               ×{mult}
             </button>
@@ -145,7 +145,7 @@ export function FoodEntry() {
           type="button"
           onClick={() => void save()}
           disabled={saving || !amountValid}
-          className="mt-3 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           Save
         </button>

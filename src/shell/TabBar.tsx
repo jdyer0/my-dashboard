@@ -11,7 +11,7 @@ const tabs = [
 export function TabBar() {
   return (
     <nav className="fixed inset-x-0 bottom-0 border-t border-line bg-canvas pb-safe">
-      <div className="mx-auto flex max-w-md">
+      <div className="mx-auto flex w-full max-w-md md:max-w-2xl">
         {tabs.map(({ to, label, Icon }) => (
           <NavLink
             key={to}

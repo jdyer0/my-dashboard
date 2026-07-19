@@ -65,7 +65,7 @@ export function FoodCustom() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">Custom food</h1>
         <p className="mt-0.5 text-label text-ink-faint">
@@ -139,7 +139,7 @@ export function FoodCustom() {
           type="button"
           onClick={() => void save()}
           disabled={saving || !valid}
-          className="mt-1 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="mt-1 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           Save food
         </button>

@@ -11,13 +11,7 @@ import {
   saveProfile,
 } from '../food/data'
 import { resolveTargets, type ResolvedTargets } from '../food/targets'
-import {
-  carbTargetG,
-  fatTargetG,
-  FIBRE_TARGET_G,
-  nutrientTotal,
-  type RniTarget,
-} from '../lib/nutrition'
+import { FIBRE_TARGET_G, nutrientTotal, type RniTarget } from '../lib/nutrition'
 import { londonDayKey } from '../lib/londonDay'
 import type { FoodLogEntry, Profile } from '../food/types'
 
@@ -92,7 +86,7 @@ function ProfilePrompt({ onSaved }: { onSaved: () => void }) {
         type="button"
         onClick={() => void save()}
         disabled={saving || !sex || !birthDate}
-        className="mt-3 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+        className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
       >
         Save
       </button>
@@ -163,7 +157,7 @@ export function Food() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <header className="pb-1 pt-2">
           <h1 className="text-screen-title text-ink">Food</h1>
         </header>
@@ -171,7 +165,7 @@ export function Food() {
         <button
           type="button"
           onClick={() => void load()}
-          className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          className="h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
         >
           Retry
         </button>
@@ -198,13 +192,10 @@ export function Food() {
 
   return (
     <BootSequence>
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <BootItem>
-          <header className="flex items-center justify-between pb-2 pt-2">
+          <header className="pb-2 pt-2">
             <h1 className="text-screen-title text-ink">Food</h1>
-            <Link to="/food/micros" className="flex min-h-[44px] items-center px-2 text-label text-ink-dim">
-              Micronutrients
-            </Link>
           </header>
         </BootItem>
 
@@ -215,9 +206,18 @@ export function Food() {
         )}
 
         <BootItem className="rounded-card border border-line bg-surface p-3">
-          <h2 className="text-card-title text-ink">Today</h2>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-card-title text-ink">Today</h2>
+            {targets && (
+              <Link to="/food/goals" className="text-label text-ink-faint underline decoration-line-bright">
+                Edit goals
+              </Link>
+            )}
+          </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <p className={`text-metric ${kcalWithin ? 'glow-live text-live' : targets ? 'text-warn' : 'text-ink'}`}>
+            <p
+              className={`text-metric ${kcalWithin ? 'glow-live text-live' : targets ? 'text-warn' : 'text-ink'}`}
+            >
               <CountUp value={kcal} />
             </p>
             {targets && (
@@ -229,21 +229,58 @@ export function Food() {
           {targets && (
             <div className="mt-3 space-y-3">
               <MacroRow label="Protein" value={protein} target={targets.proteinTargetG} accent />
-              <MacroRow label="Carbohydrate" value={carbs} target={carbTargetG(targets.kcalTarget)} />
-              <MacroRow label="Fat" value={fat} target={fatTargetG(targets.kcalTarget)} />
+              <MacroRow label="Carbohydrate" value={carbs} target={targets.carbTargetG} />
+              <MacroRow label="Fat" value={fat} target={targets.fatTargetG} />
               <MacroRow label="Fibre" value={fibre} target={FIBRE_TARGET_G} />
             </div>
           )}
         </BootItem>
 
         <BootItem className="mt-2.5">
-          <button
-            type="button"
-            onClick={() => navigate('/food/log')}
-            className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/food/log')}
+              className="btn-glow rounded-card border border-line bg-surface p-3 text-left transition-transform duration-150 ease-instrument active:scale-[0.98]"
+            >
+              <span className="flex items-baseline justify-between">
+                <span className="text-card-title text-ink">Log food</span>
+                <span className="text-metric-sm font-mono tabular-nums text-ink">
+                  {data.todayEntries.length}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-label text-ink-faint">
+                {data.todayEntries.length === 1 ? 'food logged today' : 'foods logged today'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/food/chat')}
+              className="btn-glow rounded-card border border-line bg-surface p-3 text-left transition-transform duration-150 ease-instrument active:scale-[0.98]"
+            >
+              <span className="block text-card-title text-ink">Describe a meal</span>
+              <span className="mt-0.5 block text-label text-ink-faint">
+                the coach estimates and logs it
+              </span>
+            </button>
+          </div>
+        </BootItem>
+
+        <BootItem className="mt-2.5">
+          <Link
+            to="/food/micros"
+            className="btn-glow block rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
           >
-            Log food
-          </button>
+            <span className="flex items-baseline justify-between">
+              <span className="text-card-title text-ink">Micronutrients</span>
+              <span className="text-metric-sm font-mono tabular-nums text-ink">
+                {new Set(data.rni.map((t) => t.nutrient_key)).size}
+              </span>
+            </span>
+            <span className="mt-0.5 block text-label text-ink-faint">
+              tracked against UK reference intakes
+            </span>
+          </Link>
         </BootItem>
 
         {data.todayEntries.length > 0 ? (

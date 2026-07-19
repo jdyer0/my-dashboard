@@ -51,12 +51,12 @@ describe('averageDailyIntake', () => {
     expect(averageDailyIntake([known, known], 'zinc', 7)).toBeCloseTo(2, 5)
   })
 
-  it('is null when more than half of foods lack data', () => {
-    expect(averageDailyIntake([known, unknown, unknown], 'zinc', 7)).toBeNull()
+  it('shows partial data when only some foods have the nutrient', () => {
+    expect(averageDailyIntake([known, unknown, unknown], 'zinc', 7)).toBeCloseTo(1, 5)
   })
 
-  it('is a number at exactly half lacking', () => {
-    expect(averageDailyIntake([known, unknown], 'zinc', 7)).toBeCloseTo(1, 5)
+  it('is null only when no food has the nutrient', () => {
+    expect(averageDailyIntake([unknown, unknown], 'zinc', 7)).toBeNull()
   })
 
   it('is null with no entries', () => {

@@ -81,7 +81,7 @@ export function GymSessionDetail() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">Couldn't load the session. Go back and retry.</p>
       </div>
     )
@@ -92,7 +92,7 @@ export function GymSessionDetail() {
   const started = new Date(session.started_at)
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">{sessionDate.format(started)}</h1>
         <p className="mt-0.5 text-label font-mono tabular-nums text-ink-faint">

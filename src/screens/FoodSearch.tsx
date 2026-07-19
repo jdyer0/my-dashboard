@@ -101,7 +101,7 @@ export function FoodSearch() {
   const listed = query.trim() ? results : recents
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">Log food</h1>
       </header>

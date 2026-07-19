@@ -39,8 +39,24 @@
   .glow-icon {
     filter: drop-shadow(0 0 5px rgba(45, 212, 191, 0.45));
   }
+  /* Interactive surfaces: a hairline teal ring with a faint aura. Sits over
+     the existing border so it works on buttons and tappable cards alike. */
+  .btn-glow {
+    box-shadow:
+      0 0 0 0.5px rgba(45, 212, 191, 0.28),
+      0 0 12px rgba(45, 212, 191, 0.1);
+  }
   .bg-ambient {
-    background: radial-gradient(70% 100% at 50% 0%, rgba(45, 212, 191, 0.06), transparent 70%);
+    background: radial-gradient(70% 100% at 50% 0%, rgba(45, 212, 191, 0.09), transparent 70%);
+  }
+  /* Blueprint grid, fading out towards the tab bar. Static — costs nothing. */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(45, 212, 191, 0.045) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, rgba(45, 212, 191, 0.045) 0.5px, transparent 0.5px);
+    background-size: 56px 56px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 20%, transparent 90%);
+    mask-image: linear-gradient(to bottom, #000 20%, transparent 90%);
   }
 }
 

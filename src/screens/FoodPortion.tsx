@@ -46,7 +46,7 @@ export function FoodPortion() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">Couldn't load the food. Go back and retry.</p>
       </div>
     )
@@ -75,7 +75,7 @@ export function FoodPortion() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">{food.name}</h1>
         {food.brand && <p className="mt-0.5 text-label text-ink-faint">{food.brand}</p>}
@@ -98,7 +98,7 @@ export function FoodPortion() {
               key={mult}
               type="button"
               onClick={() => setAmount(String(Math.round(food.default_portion_g * mult * 10) / 10))}
-              className="h-11 rounded-ctl border border-line bg-surface-raised text-body font-mono tabular-nums text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="h-11 btn-glow rounded-ctl border border-line bg-surface-raised text-body font-mono tabular-nums text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
               ×{mult}
             </button>
@@ -127,7 +127,7 @@ export function FoodPortion() {
           type="button"
           onClick={() => void log()}
           disabled={saving || !amountValid}
-          className="mt-3 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           Log{kcalPreview !== null ? ` · ${kcalPreview} kcal` : ''}
         </button>

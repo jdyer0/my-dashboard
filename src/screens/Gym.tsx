@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BootItem, BootSequence } from '../motion/BootSequence'
 import { fetchSplitDays, listAllSets, listExercises, listSessions, startSession } from '../gym/data'
+import { adviseProgression } from '../gym/coach'
 import { bestLifts, totalVolumeKg } from '../gym/e1rm'
 import { clockTime, fmtKg, sessionDate } from '../gym/format'
 import { FOCUS_LABELS, WEEKDAY_LABELS } from '../gym/split'
@@ -54,7 +55,7 @@ export function Gym() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <header className="pb-1 pt-2">
           <h1 className="text-screen-title text-ink">Gym</h1>
         </header>
@@ -62,7 +63,7 @@ export function Gym() {
         <button
           type="button"
           onClick={() => void load()}
-          className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          className="h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
         >
           Retry
         </button>
@@ -84,10 +85,29 @@ export function Gym() {
   }
   const now = new Date()
   const todayFocus = data.splitDays.find((d) => d.weekday === londonWeekday(now))?.focus
+  const trainingDays = data.splitDays.filter((d) => d.focus !== 'rest').length
+
+  // data.sets is chronological, so the map ends up holding each exercise's
+  // most recent set — the one the coach advises from.
+  const lastSetByExercise = new Map<string, GymSet>()
+  for (const set of data.sets) lastSetByExercise.set(set.exercise_id, set)
+  let readyToProgress = 0
+  for (const exercise of data.exercises) {
+    const last = lastSetByExercise.get(exercise.id)
+    if (!last) continue
+    const advice = adviseProgression({
+      weightKg: last.weight_kg,
+      reps: last.reps,
+      incrementKg: exercise.increment_kg,
+      repRangeMin: exercise.rep_range_min,
+      repRangeMax: exercise.rep_range_max,
+    })
+    if (advice.action === 'increase') readyToProgress++
+  }
 
   return (
     <BootSequence>
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <BootItem>
           <header className="flex items-baseline justify-between pb-2 pt-2">
             <h1 className="text-screen-title text-ink">Gym</h1>
@@ -102,10 +122,13 @@ export function Gym() {
           {active ? (
             <Link
               to="/gym/session"
-              className="flex min-h-[44px] items-center justify-between rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="btn-glow flex min-h-[44px] items-center justify-between rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
               <span className="flex items-center gap-2">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-live" aria-hidden="true" />
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full bg-live"
+                  aria-hidden="true"
+                />
                 <span className="text-body text-ink">Session in progress</span>
               </span>
               <span className="text-label font-mono tabular-nums text-ink-faint">
@@ -117,7 +140,7 @@ export function Gym() {
               type="button"
               onClick={() => void start()}
               disabled={starting}
-              className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+              className="h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
             >
               Start session
             </button>
@@ -125,27 +148,52 @@ export function Gym() {
         </BootItem>
 
         <BootItem className="mt-2.5">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid gap-2 md:grid-cols-3">
             <Link
               to="/gym/coach"
-              className="rounded-card border border-line bg-surface px-2.5 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="btn-glow rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
-              <span className="block text-body text-ink">Coach</span>
-              <span className="block text-label text-ink-faint">Progression</span>
+              <span className="flex items-baseline justify-between">
+                <span className="text-card-title text-ink">Coach</span>
+                <span
+                  className={`text-metric-sm font-mono tabular-nums ${
+                    readyToProgress > 0 ? 'glow-live text-live' : 'text-ink'
+                  }`}
+                >
+                  {readyToProgress}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-label text-ink-faint">
+                {readyToProgress === 1 ? 'lift ready to move up' : 'lifts ready to move up'}
+              </span>
             </Link>
             <Link
               to="/gym/split"
-              className="rounded-card border border-line bg-surface px-2.5 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="btn-glow rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
-              <span className="block text-body text-ink">Split</span>
-              <span className="block text-label text-ink-faint">Weekly plan</span>
+              <span className="flex items-baseline justify-between">
+                <span className="text-card-title text-ink">Split</span>
+                <span className="text-metric-sm font-mono tabular-nums text-ink">
+                  {trainingDays}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-label text-ink-faint">
+                training days · today {todayFocus ? FOCUS_LABELS[todayFocus].toLowerCase() : 'rest'}
+              </span>
             </Link>
             <Link
               to="/gym/exercises"
-              className="rounded-card border border-line bg-surface px-2.5 py-2.5 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="btn-glow rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
-              <span className="block text-body text-ink">Exercises</span>
-              <span className="block text-label text-ink-faint">Ranges, increments</span>
+              <span className="flex items-baseline justify-between">
+                <span className="text-card-title text-ink">Exercises</span>
+                <span className="text-metric-sm font-mono tabular-nums text-ink">
+                  {data.exercises.length}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-label text-ink-faint">
+                tracked, with ranges and increments
+              </span>
             </Link>
           </div>
         </BootItem>
@@ -164,7 +212,8 @@ export function Gym() {
                     <span
                       className={`text-metric-sm font-mono tabular-nums ${recent ? 'glow-live text-live' : 'text-ink'}`}
                     >
-                      {fmtKg(lift.e1rmKg)} <span className="text-label text-ink-faint">kg e1RM</span>
+                      {fmtKg(lift.e1rmKg)}{' '}
+                      <span className="text-label text-ink-faint">kg e1RM</span>
                     </span>
                   </li>
                 )
@@ -177,7 +226,10 @@ export function Gym() {
           <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
             <div className="flex items-baseline justify-between">
               <h2 className="text-card-title text-ink">History</h2>
-              <Link to="/gym/history" className="flex min-h-[44px] items-center px-2 text-label text-ink-dim">
+              <Link
+                to="/gym/history"
+                className="flex min-h-[44px] items-center px-2 text-label text-ink-dim"
+              >
                 All sessions
               </Link>
             </div>

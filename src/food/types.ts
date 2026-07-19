@@ -34,4 +34,6 @@ export interface Profile {
 export interface NutritionSettings {
   kcal_target: number | null
   protein_g_target: number | null
+  carb_g_target: number | null
+  fat_g_target: number | null
 }
