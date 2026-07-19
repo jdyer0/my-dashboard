@@ -1,29 +1,20 @@
-import type { Per100g } from '../lib/nutrition'
-
-export interface Food {
-  id: string
-  name: string
-  brand: string | null
-  source: 'cofid' | 'fdc' | 'custom'
-  per_100g: Per100g
-  default_portion_g: number
-  portion_label: string | null
-}
+import type { NutrientMap } from '../lib/nutrition'
 
 export interface FoodLogEntry {
   id: string
-  food_id: string
+  name: string
   logged_at: string
   meal: 'breakfast' | 'lunch' | 'dinner' | 'snack'
   amount_g: number
-  foods: Food
+  /** Absolute nutrient amounts for this portion, estimated by the coach. */
+  nutrients: NutrientMap
 }
 
-export interface FdcResult {
-  fdcId: number
+/** One food from a parsed meal description, with the coach's estimates. */
+export interface ParsedMealItem {
   name: string
-  brand: string | null
-  kcalPer100g: number | null
+  amount_g: number
+  nutrients: NutrientMap
 }
 
 export interface Profile {
@@ -34,4 +25,6 @@ export interface Profile {
 export interface NutritionSettings {
   kcal_target: number | null
   protein_g_target: number | null
+  carb_g_target: number | null
+  fat_g_target: number | null
 }

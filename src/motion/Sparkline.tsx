@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useBootAnimate, useBootDelay } from './BootSequence'
 import { usePrefersReducedMotion } from './usePrefersReducedMotion'
 
@@ -21,6 +21,7 @@ export function Sparkline({ points, width = 120, height = 32, className = '' }: 
 
   const pathRef = useRef<SVGPathElement>(null)
   const [settled, setSettled] = useState(!draw)
+  const gradientId = useId()
 
   const coords = useMemo(() => {
     if (points.length < 2) return []
@@ -51,8 +52,9 @@ export function Sparkline({ points, width = 120, height = 32, className = '' }: 
     return () => window.clearTimeout(timer)
   }, [draw, delay, d])
 
+  const first = coords[0]
   const last = coords[coords.length - 1]
-  if (!last) return null
+  if (!first || !last) return null
 
   return (
     <svg
@@ -62,6 +64,18 @@ export function Sparkline({ points, width = 120, height = 32, className = '' }: 
       className={className}
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity={0.16} />
+          <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      {/* Faint area under the line, fading in once the draw settles. */}
+      <path
+        d={`${d} L${last[0].toFixed(2)} ${height - PAD} L${first[0].toFixed(2)} ${height - PAD} Z`}
+        fill={`url(#${gradientId})`}
+        style={{ opacity: settled ? 1 : 0, transition: 'opacity 400ms ease-out' }}
+      />
       <path
         ref={pathRef}
         d={d}

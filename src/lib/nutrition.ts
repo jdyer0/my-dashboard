@@ -7,8 +7,9 @@ export interface NutrientValue {
   is_trace?: boolean
 }
 
-/** Per-100g nutrient map; unknown nutrients are absent, never zero. */
-export type Per100g = Record<string, NutrientValue | undefined>
+/** Absolute nutrient amounts for a logged portion; unknown nutrients are
+    absent, never zero. */
+export type NutrientMap = Record<string, NutrientValue | undefined>
 
 export interface NutrientDef {
   key: string
@@ -27,16 +28,16 @@ export interface RniTarget {
 }
 
 export interface LoggedFood {
-  amountG: number
-  per100g: Per100g
+  nutrients: NutrientMap
 }
 
-/** Scale a per-100g map to an amount. Trace stays trace; unknown stays absent. */
-export function scaleNutrients(per100g: Per100g, amountG: number): Record<string, NutrientValue> {
+/** Scale a nutrient map by a factor — used when the user corrects a portion's
+    grams. Trace stays trace; unknown stays absent. */
+export function scaleNutrients(nutrients: NutrientMap, factor: number): Record<string, NutrientValue> {
   const scaled: Record<string, NutrientValue> = {}
-  for (const [key, v] of Object.entries(per100g)) {
+  for (const [key, v] of Object.entries(nutrients)) {
     if (!v) continue
-    scaled[key] = v.is_trace ? { value: 0, is_trace: true } : { value: (v.value * amountG) / 100 }
+    scaled[key] = v.is_trace ? { value: 0, is_trace: true } : { value: v.value * factor }
   }
   return scaled
 }
@@ -56,24 +57,24 @@ export function nutrientTotal(entries: LoggedFood[], key: string): NutrientTotal
   let value = 0
   let known = 0
   for (const entry of entries) {
-    const v = entry.per100g[key]
+    const v = entry.nutrients[key]
     if (!v) continue
     known++
-    if (!v.is_trace) value += (v.value * entry.amountG) / 100
+    if (!v.is_trace) value += v.value
   }
   return { value, known, total: entries.length }
 }
 
 /**
- * Average daily intake over a window, or null for "insufficient data" when
- * more than half of the logged foods lack data for the nutrient. Never
- * present a number built mostly from missing values.
+ * Average daily intake over a window, from whatever entries carry the nutrient.
+ * Partial data is shown: the figure is null only when no logged entry has any
+ * value for the nutrient (genuinely unknown), never a fabricated zero. When
+ * some entries lack the nutrient the total is under-counted, not wrong.
  */
 export function averageDailyIntake(entries: LoggedFood[], key: string, days: number): number | null {
   if (entries.length === 0 || days <= 0) return null
-  const { value, known, total } = nutrientTotal(entries, key)
-  const lacking = total - known
-  if (lacking > total / 2) return null
+  const { value, known } = nutrientTotal(entries, key)
+  if (known === 0) return null
   return value / days
 }
 
@@ -139,18 +140,17 @@ export interface Contribution {
   value: number
 }
 
-/** Which foods contributed most to a nutrient, aggregated by food name. */
+/** Which entries contributed most to a nutrient, aggregated by name. */
 export function contributors(
   entries: (LoggedFood & { name: string })[],
   key: string,
 ): Contribution[] {
   const byName = new Map<string, number>()
   for (const entry of entries) {
-    const v = entry.per100g[key]
+    const v = entry.nutrients[key]
     if (!v || v.is_trace) continue
-    const amount = (v.value * entry.amountG) / 100
-    if (amount <= 0) continue
-    byName.set(entry.name, (byName.get(entry.name) ?? 0) + amount)
+    if (v.value <= 0) continue
+    byName.set(entry.name, (byName.get(entry.name) ?? 0) + v.value)
   }
   return [...byName.entries()]
     .map(([name, value]) => ({ name, value }))

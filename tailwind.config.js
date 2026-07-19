@@ -87,6 +87,11 @@ export default {
           '0%, 100%': { opacity: '0.35' },
           '50%': { opacity: '0.08' },
         },
+        // Energy pass through an on-target bar: sweeps, then rests.
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '45%, 100%': { transform: 'translateX(2400%)' },
+        },
       },
       animation: {
         'boot-in': 'boot-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both',
@@ -95,6 +100,7 @@ export default {
         breathe: 'breathe 9s ease-in-out infinite',
         scan: 'scan 9s cubic-bezier(0.45, 0, 0.55, 1) infinite',
         halo: 'halo 2s ease-in-out infinite',
+        shimmer: 'shimmer 3.5s cubic-bezier(0.45, 0, 0.55, 1) infinite',
       },
     },
   },

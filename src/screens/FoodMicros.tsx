@@ -16,14 +16,14 @@ import {
   type NutrientDef,
   type RniTarget,
 } from '../lib/nutrition'
-import { londonDayKey, recentLondonDayKeys } from '../lib/londonDay'
+import { londonDayKey } from '../lib/londonDay'
 import type { FoodLogEntry, Profile } from '../food/types'
 
 interface MicrosData {
   defs: NutrientDef[]
   rni: RniTarget[]
   profile: Profile
-  weekEntries: FoodLogEntry[]
+  todayEntries: FoodLogEntry[]
 }
 
 export function FoodMicros() {
@@ -39,15 +39,15 @@ export function FoodMicros() {
           fetchNutrientDefs(),
           fetchRniTargets(),
           fetchProfile(),
-          fetchRecentLog(7),
+          fetchRecentLog(1),
         ])
         if (cancelled) return
-        const weekKeys = new Set(recentLondonDayKeys(new Date(), 7))
+        const todayKey = londonDayKey(new Date())
         setData({
           defs,
           rni,
           profile,
-          weekEntries: log.filter((e) => weekKeys.has(londonDayKey(new Date(e.logged_at)))),
+          todayEntries: log.filter((e) => londonDayKey(new Date(e.logged_at)) === todayKey),
         })
       } catch {
         if (!cancelled) setFailed(true)
@@ -61,7 +61,7 @@ export function FoodMicros() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">Couldn't load micronutrients. Go back and retry.</p>
       </div>
     )
@@ -71,7 +71,7 @@ export function FoodMicros() {
 
   if (!data.profile.sex || !data.profile.birth_date) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <header className="pb-2 pt-2">
           <h1 className="text-screen-title text-ink">Micronutrients</h1>
         </header>
@@ -88,29 +88,28 @@ export function FoodMicros() {
   const sex = data.profile.sex
   const age = ageInYears(data.profile.birth_date, new Date())
   const micros = data.defs.filter((d) => d.kind === 'micro')
-  const loggedFoods = data.weekEntries.map((e) => ({
-    name: e.foods.name,
-    amountG: e.amount_g,
-    per100g: e.foods.per_100g,
+  const loggedFoods = data.todayEntries.map((e) => ({
+    name: e.name,
+    nutrients: e.nutrients,
   }))
 
   return (
     <BootSequence>
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <BootItem>
           <header className="pb-2 pt-2">
             <h1 className="text-screen-title text-ink">Micronutrients</h1>
-            <p className="mt-0.5 text-label text-ink-faint">7-day average vs UK RNI</p>
+            <p className="mt-0.5 text-label text-ink-faint">Today vs UK RNI</p>
           </header>
         </BootItem>
 
         <BootItem className="rounded-card border border-line bg-surface p-3">
           {loggedFoods.length === 0 ? (
-            <p className="py-8 text-center text-body text-ink-dim">Log meals to see averages</p>
+            <p className="py-8 text-center text-body text-ink-dim">Log meals to see today's totals</p>
           ) : (
             <ul className="space-y-3">
               {micros.map((def) => {
-                const average = averageDailyIntake(loggedFoods, def.key, 7)
+                const average = averageDailyIntake(loggedFoods, def.key, 1)
                 const target = targetFor(data.rni, def.key, sex, age)
                 const pct =
                   average !== null && target !== null && target > 0
@@ -158,7 +157,7 @@ export function FoodMicros() {
                                 </span>
                                 <span className="shrink-0 text-label font-mono tabular-nums text-ink-dim">
                                   {c.value >= 10 ? Math.round(c.value) : c.value.toFixed(1)}{' '}
-                                  {def.unit} / 7 days
+                                  {def.unit}
                                 </span>
                               </li>
                             ))}

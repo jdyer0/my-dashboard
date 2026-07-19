@@ -6,7 +6,7 @@ interface EmptyModuleProps {
 /** Real empty state for a tab whose module hasn't been built yet. */
 export function EmptyModule({ title, invitation }: EmptyModuleProps) {
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-1 pt-2">
         <h1 className="text-screen-title text-ink">{title}</h1>
       </header>

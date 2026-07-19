@@ -15,11 +15,10 @@ import { GymExercises } from './screens/GymExercises'
 import { GymSplit } from './screens/GymSplit'
 import { GymSplitTemplate } from './screens/GymSplitTemplate'
 import { Food } from './screens/Food'
-import { FoodSearch } from './screens/FoodSearch'
-import { FoodPortion } from './screens/FoodPortion'
-import { FoodCustom } from './screens/FoodCustom'
+import { FoodChat } from './screens/FoodChat'
 import { FoodEntry } from './screens/FoodEntry'
 import { FoodMicros } from './screens/FoodMicros'
+import { FoodGoals } from './screens/FoodGoals'
 
 function Gate() {
   const auth = useAuth()
@@ -40,11 +39,10 @@ function Gate() {
         <Route path="gym/split" element={<GymSplit />} />
         <Route path="gym/split/:focus" element={<GymSplitTemplate />} />
         <Route path="food" element={<Food />} />
-        <Route path="food/log" element={<FoodSearch />} />
-        <Route path="food/portion/:foodId" element={<FoodPortion />} />
-        <Route path="food/new" element={<FoodCustom />} />
+        <Route path="food/chat" element={<FoodChat />} />
         <Route path="food/entry/:id" element={<FoodEntry />} />
         <Route path="food/micros" element={<FoodMicros />} />
+        <Route path="food/goals" element={<FoodGoals />} />
         <Route
           path="money"
           element={<EmptyModule title="Money" invitation="Connect your bank" />}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { deleteEntry, fetchEntry, updateEntry } from '../food/data'
-import type { Meal } from '../lib/nutrition'
+import { scaleNutrients, type Meal } from '../lib/nutrition'
 import type { FoodLogEntry } from '../food/types'
 
 const MEALS: { key: Meal; label: string }[] = [
@@ -48,7 +48,7 @@ export function FoodEntry() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">Couldn't load the entry. Go back and retry.</p>
       </div>
     )
@@ -63,7 +63,9 @@ export function FoodEntry() {
     if (!entry || !amountValid || saving) return
     setSaving(true)
     try {
-      await updateEntry(entry.id, amountG, meal)
+      // The nutrients are the coach's estimate for the logged grams — a
+      // corrected amount rescales them proportionally.
+      await updateEntry(entry.id, amountG, meal, scaleNutrients(entry.nutrients, amountG / entry.amount_g))
       navigate('/food')
     } catch {
       setSaving(false)
@@ -89,12 +91,9 @@ export function FoodEntry() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">{entry.foods.name}</h1>
-        {entry.foods.brand && (
-          <p className="mt-0.5 text-label text-ink-faint">{entry.foods.brand}</p>
-        )}
+        <h1 className="text-screen-title text-ink">{entry.name}</h1>
       </header>
 
       <section className="rounded-card border border-line bg-surface p-3">
@@ -114,9 +113,9 @@ export function FoodEntry() {
               key={mult}
               type="button"
               onClick={() =>
-                setAmount(String(Math.round(entry.foods.default_portion_g * mult * 10) / 10))
+                setAmount(String(Math.round(entry.amount_g * mult * 10) / 10))
               }
-              className="h-11 rounded-ctl border border-line bg-surface-raised text-body font-mono tabular-nums text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              className="h-11 btn-glow rounded-ctl border border-line bg-surface-raised text-body font-mono tabular-nums text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
             >
               ×{mult}
             </button>
@@ -145,7 +144,7 @@ export function FoodEntry() {
           type="button"
           onClick={() => void save()}
           disabled={saving || !amountValid}
-          className="mt-3 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           Save
         </button>

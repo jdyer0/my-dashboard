@@ -136,14 +136,14 @@ export function GymExercises() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">Exercises</h1>
         <p className="mt-0.5 text-label text-ink-faint">
@@ -164,7 +164,7 @@ export function GymExercises() {
           type="button"
           onClick={() => void create()}
           disabled={adding || !newName.trim()}
-          className="h-11 shrink-0 rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="h-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           Add
         </button>

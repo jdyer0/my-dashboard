@@ -14,25 +14,25 @@ import {
 } from './nutrition'
 
 describe('scaleNutrients', () => {
-  it('scales values by amount and keeps unknowns absent', () => {
-    const scaled = scaleNutrients({ protein: { value: 3.4 }, fat: { value: 3.6 } }, 250)
-    expect(scaled.protein?.value).toBeCloseTo(8.5, 5)
-    expect(scaled.fat?.value).toBeCloseTo(9, 5)
+  it('scales values by the factor and keeps unknowns absent', () => {
+    const scaled = scaleNutrients({ protein: { value: 8.5 }, fat: { value: 9 } }, 2)
+    expect(scaled.protein?.value).toBeCloseTo(17, 5)
+    expect(scaled.fat?.value).toBeCloseTo(18, 5)
     expect('vitamin_d' in scaled).toBe(false)
   })
 
   it('keeps trace as trace, not as a scaled zero', () => {
-    const scaled = scaleNutrients({ vitamin_d: { value: 0, is_trace: true } }, 250)
+    const scaled = scaleNutrients({ vitamin_d: { value: 0, is_trace: true } }, 2.5)
     expect(scaled.vitamin_d).toEqual({ value: 0, is_trace: true })
   })
 })
 
 describe('nutrientTotal', () => {
   const entries: LoggedFood[] = [
-    { amountG: 100, per100g: { iron: { value: 2 } } },
-    { amountG: 50, per100g: { iron: { value: 4 } } },
-    { amountG: 200, per100g: {} }, // iron unknown — excluded, not zero
-    { amountG: 100, per100g: { iron: { value: 0, is_trace: true } } },
+    { nutrients: { iron: { value: 2 } } },
+    { nutrients: { iron: { value: 2 } } },
+    { nutrients: {} }, // iron unknown — excluded, not zero
+    { nutrients: { iron: { value: 0, is_trace: true } } },
   ]
 
   it('sums only entries with data and counts them', () => {
@@ -44,19 +44,19 @@ describe('nutrientTotal', () => {
 })
 
 describe('averageDailyIntake', () => {
-  const known: LoggedFood = { amountG: 100, per100g: { zinc: { value: 7 } } }
-  const unknown: LoggedFood = { amountG: 100, per100g: {} }
+  const known: LoggedFood = { nutrients: { zinc: { value: 7 } } }
+  const unknown: LoggedFood = { nutrients: {} }
 
   it('averages over the window, not over logged days', () => {
     expect(averageDailyIntake([known, known], 'zinc', 7)).toBeCloseTo(2, 5)
   })
 
-  it('is null when more than half of foods lack data', () => {
-    expect(averageDailyIntake([known, unknown, unknown], 'zinc', 7)).toBeNull()
+  it('shows partial data when only some entries have the nutrient', () => {
+    expect(averageDailyIntake([known, unknown, unknown], 'zinc', 7)).toBeCloseTo(1, 5)
   })
 
-  it('is a number at exactly half lacking', () => {
-    expect(averageDailyIntake([known, unknown], 'zinc', 7)).toBeCloseTo(1, 5)
+  it('is null only when no entry has the nutrient', () => {
+    expect(averageDailyIntake([unknown, unknown], 'zinc', 7)).toBeNull()
   })
 
   it('is null with no entries', () => {
@@ -114,13 +114,13 @@ describe('macro targets', () => {
 })
 
 describe('contributors', () => {
-  it('aggregates by food and sorts by contribution', () => {
+  it('aggregates by name and sorts by contribution', () => {
     const list = contributors(
       [
-        { name: 'Milk', amountG: 200, per100g: { calcium: { value: 120 } } },
-        { name: 'Milk', amountG: 100, per100g: { calcium: { value: 120 } } },
-        { name: 'Spinach', amountG: 80, per100g: { calcium: { value: 136 } } },
-        { name: 'Water', amountG: 500, per100g: {} },
+        { name: 'Milk', nutrients: { calcium: { value: 240 } } },
+        { name: 'Milk', nutrients: { calcium: { value: 120 } } },
+        { name: 'Spinach', nutrients: { calcium: { value: 108.8 } } },
+        { name: 'Water', nutrients: {} },
       ],
       'calcium',
     )

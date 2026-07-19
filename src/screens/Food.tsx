@@ -11,13 +11,7 @@ import {
   saveProfile,
 } from '../food/data'
 import { resolveTargets, type ResolvedTargets } from '../food/targets'
-import {
-  carbTargetG,
-  fatTargetG,
-  FIBRE_TARGET_G,
-  nutrientTotal,
-  type RniTarget,
-} from '../lib/nutrition'
+import { FIBRE_TARGET_G, nutrientTotal, type RniTarget } from '../lib/nutrition'
 import { londonDayKey } from '../lib/londonDay'
 import type { FoodLogEntry, Profile } from '../food/types'
 
@@ -92,7 +86,7 @@ function ProfilePrompt({ onSaved }: { onSaved: () => void }) {
         type="button"
         onClick={() => void save()}
         disabled={saving || !sex || !birthDate}
-        className="mt-3 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+        className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
       >
         Save
       </button>
@@ -163,7 +157,7 @@ export function Food() {
 
   if (failed) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <header className="pb-1 pt-2">
           <h1 className="text-screen-title text-ink">Food</h1>
         </header>
@@ -171,7 +165,7 @@ export function Food() {
         <button
           type="button"
           onClick={() => void load()}
-          className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          className="h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
         >
           Retry
         </button>
@@ -181,10 +175,7 @@ export function Food() {
 
   if (!data) return null
 
-  const loggedFoods = data.todayEntries.map((e) => ({
-    amountG: e.amount_g,
-    per100g: e.foods.per_100g,
-  }))
+  const loggedFoods = data.todayEntries.map((e) => ({ nutrients: e.nutrients }))
   const kcal = nutrientTotal(loggedFoods, 'energy_kcal').value
   const protein = nutrientTotal(loggedFoods, 'protein').value
   const carbs = nutrientTotal(loggedFoods, 'carbohydrate').value
@@ -198,13 +189,10 @@ export function Food() {
 
   return (
     <BootSequence>
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <BootItem>
-          <header className="flex items-center justify-between pb-2 pt-2">
+          <header className="pb-2 pt-2">
             <h1 className="text-screen-title text-ink">Food</h1>
-            <Link to="/food/micros" className="flex min-h-[44px] items-center px-2 text-label text-ink-dim">
-              Micronutrients
-            </Link>
           </header>
         </BootItem>
 
@@ -215,9 +203,18 @@ export function Food() {
         )}
 
         <BootItem className="rounded-card border border-line bg-surface p-3">
-          <h2 className="text-card-title text-ink">Today</h2>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-card-title text-ink">Today</h2>
+            {targets && (
+              <Link to="/food/goals" className="text-label text-ink-faint underline decoration-line-bright">
+                Edit goals
+              </Link>
+            )}
+          </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <p className={`text-metric ${kcalWithin ? 'glow-live text-live' : targets ? 'text-warn' : 'text-ink'}`}>
+            <p
+              className={`text-metric ${kcalWithin ? 'glow-live text-live' : targets ? 'text-warn' : 'text-ink'}`}
+            >
               <CountUp value={kcal} />
             </p>
             {targets && (
@@ -229,8 +226,8 @@ export function Food() {
           {targets && (
             <div className="mt-3 space-y-3">
               <MacroRow label="Protein" value={protein} target={targets.proteinTargetG} accent />
-              <MacroRow label="Carbohydrate" value={carbs} target={carbTargetG(targets.kcalTarget)} />
-              <MacroRow label="Fat" value={fat} target={fatTargetG(targets.kcalTarget)} />
+              <MacroRow label="Carbohydrate" value={carbs} target={targets.carbTargetG} />
+              <MacroRow label="Fat" value={fat} target={targets.fatTargetG} />
               <MacroRow label="Fibre" value={fibre} target={FIBRE_TARGET_G} />
             </div>
           )}
@@ -239,11 +236,37 @@ export function Food() {
         <BootItem className="mt-2.5">
           <button
             type="button"
-            onClick={() => navigate('/food/log')}
-            className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+            onClick={() => navigate('/food/chat')}
+            className="btn-glow w-full rounded-card border border-line bg-surface p-3 text-left transition-transform duration-150 ease-instrument active:scale-[0.98]"
           >
-            Log food
+            <span className="flex items-baseline justify-between">
+              <span className="text-card-title text-ink">Describe a meal</span>
+              <span className="text-metric-sm font-mono tabular-nums text-ink">
+                {data.todayEntries.length}
+              </span>
+            </span>
+            <span className="mt-0.5 block text-label text-ink-faint">
+              the coach estimates and logs it ·{' '}
+              {data.todayEntries.length === 1 ? 'item logged today' : 'items logged today'}
+            </span>
           </button>
+        </BootItem>
+
+        <BootItem className="mt-2.5">
+          <Link
+            to="/food/micros"
+            className="btn-glow block rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          >
+            <span className="flex items-baseline justify-between">
+              <span className="text-card-title text-ink">Micronutrients</span>
+              <span className="text-metric-sm font-mono tabular-nums text-ink">
+                {new Set(data.rni.map((t) => t.nutrient_key)).size}
+              </span>
+            </span>
+            <span className="mt-0.5 block text-label text-ink-faint">
+              tracked against UK reference intakes
+            </span>
+          </Link>
         </BootItem>
 
         {data.todayEntries.length > 0 ? (
@@ -255,7 +278,7 @@ export function Food() {
                 <h2 className="text-card-title text-ink">{label}</h2>
                 <ul className="mt-1">
                   {entries.map((entry) => {
-                    const entryKcal = entry.foods.per_100g.energy_kcal
+                    const entryKcal = entry.nutrients.energy_kcal
                     return (
                       <li key={entry.id}>
                         <Link
@@ -263,12 +286,12 @@ export function Food() {
                           className="flex min-h-[44px] items-center justify-between border-b border-line py-2 last:border-b-0"
                         >
                           <span className="min-w-0 flex-1 truncate pr-3 text-body text-ink-dim">
-                            {entry.foods.name}
+                            {entry.name}
                           </span>
                           <span className="shrink-0 text-label font-mono tabular-nums text-ink-faint">
                             {Math.round(entry.amount_g)} g
                             {entryKcal && !entryKcal.is_trace
-                              ? ` · ${Math.round((entryKcal.value * entry.amount_g) / 100)} kcal`
+                              ? ` · ${Math.round(entryKcal.value)} kcal`
                               : ''}
                           </span>
                         </Link>

@@ -8,13 +8,21 @@ interface BarProps {
   className?: string
   /** Fill colour — bg-live when on-target, bg-warn below, bg-ink-dim neutral. */
   fillClassName?: string
+  /** Periodic energy pass along the filled region — on-target bars only. */
+  shimmer?: boolean
 }
 
 const SWEEP_MS = 500
 const TWEEN_MS = 300
 const BAR_STAGGER_MS = 40
 
-export function Bar({ value, max, className = '', fillClassName = 'bg-ink-dim' }: BarProps) {
+export function Bar({
+  value,
+  max,
+  className = '',
+  fillClassName = 'bg-ink-dim',
+  shimmer = false,
+}: BarProps) {
   const animate = useBootAnimate()
   const delay = useBootDelay()
   const reduced = usePrefersReducedMotion()
@@ -52,12 +60,22 @@ export function Bar({ value, max, className = '', fillClassName = 'bg-ink-dim' }
   }, [ratio, boot, delay, reduced])
 
   return (
-    <div className={`h-1 overflow-hidden rounded-full bg-line ${className}`}>
+    <div className={`relative h-1 overflow-hidden rounded-full bg-line ${className}`}>
       <div
         ref={fillRef}
         className={`h-full origin-left rounded-full ${fillClassName}`}
         style={{ transform: boot ? 'scaleX(0)' : `scaleX(${ratio})` }}
       />
+      {/* Clipped to the filled region so the pass never runs past the value. */}
+      {shimmer && !reduced && ratio > 0 && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 overflow-hidden rounded-full"
+          style={{ width: `${ratio * 100}%` }}
+        >
+          <div className="h-full w-8 animate-shimmer bg-gradient-to-r from-transparent via-ink/50 to-transparent" />
+        </div>
+      )}
     </div>
   )
 }

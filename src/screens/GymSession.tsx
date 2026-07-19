@@ -251,7 +251,7 @@ export function GymSession() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md md:max-w-2xl">
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
@@ -263,7 +263,7 @@ export function GymSession() {
   const otherGroups = groupSets(sessionSets).filter((g) => g.exerciseId !== current?.id)
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto w-full max-w-md md:max-w-2xl">
       <header className="flex items-center justify-between pb-2 pt-2">
         <div>
           <h1 className="text-screen-title text-ink">Session</h1>
@@ -277,7 +277,7 @@ export function GymSession() {
           type="button"
           onClick={() => void finish()}
           disabled={finishing}
-          className="h-11 rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="h-11 btn-glow rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           Finish
         </button>
@@ -317,7 +317,7 @@ export function GymSession() {
             type="button"
             onClick={() => void createExercise()}
             disabled={addingNew || !newName.trim()}
-            className="h-11 shrink-0 rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+            className="h-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
           >
             Add
           </button>
@@ -396,7 +396,7 @@ export function GymSession() {
                   type="button"
                   onClick={() => stepWeight(-1)}
                   aria-label="Reduce weight"
-                  className="h-11 w-11 shrink-0 rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+                  className="h-11 w-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
                 >
                   −
                 </button>
@@ -411,7 +411,7 @@ export function GymSession() {
                   type="button"
                   onClick={() => stepWeight(1)}
                   aria-label="Increase weight"
-                  className="h-11 w-11 shrink-0 rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+                  className="h-11 w-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
                 >
                   +
                 </button>
@@ -426,7 +426,7 @@ export function GymSession() {
                   type="button"
                   onClick={() => stepReps(-1)}
                   aria-label="Reduce reps"
-                  className="h-11 w-11 shrink-0 rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+                  className="h-11 w-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
                 >
                   −
                 </button>
@@ -441,7 +441,7 @@ export function GymSession() {
                   type="button"
                   onClick={() => stepReps(1)}
                   aria-label="Increase reps"
-                  className="h-11 w-11 shrink-0 rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
+                  className="h-11 w-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98]"
                 >
                   +
                 </button>
@@ -453,7 +453,7 @@ export function GymSession() {
             type="button"
             onClick={() => void logSet()}
             disabled={saving}
-            className="mt-3 h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+            className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
           >
             Log set
           </button>

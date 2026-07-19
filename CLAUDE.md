@@ -263,22 +263,23 @@ KYB required. Gotchas:
 
 ### Nutrition data (Phase 2)
 
-Two sources:
+Food logging is **chat-only** (decided 2026-07-19, replacing the earlier CoFID/FDC food
+table). The user describes a meal in plain English; the `meal-parse` Edge Function (Gemini
+free tier, `gemini-flash-latest` — never pin a dated Gemini model) splits it into items and
+estimates each portion's macro- and micronutrients directly. There is no foods reference
+table, no CoFID ETL and no FDC lookup — the model's estimate is the record.
 
-- **CoFID** (McCance & Widdowson's, UK government) — ~3,300 UK foods and drinks, seeded into
-  Postgres via a one-off ETL. Primary source: UK-accurate, instant local search, no rate
-  limit.
-- **USDA FoodData Central** — free API key, richer micronutrient coverage. Fallback for
-  anything not in CoFID, and backfill for CoFID's gaps.
-
-**The CoFID ETL is the trap.** The dataset marks unknown values as `N` and traces as `Tr`.
-Coercing those to `0` makes the app confidently report deficiencies that don't exist. `N`
-must become `null` and render as "no data" — not as a zero bar. `Tr` becomes `0` with a
-trace flag. CoFID also lacks omega-3/6, folates, amino acids and vitamin D for many entries;
-FDC backfills those.
+- Each `food_log` row is self-contained: a name plus **absolute** nutrient amounts for the
+  portion eaten, stored as `{nutrient_key: {value, is_trace}}` jsonb. Never per-100g.
+- Editing an entry's grams rescales its stored nutrients proportionally — there is no
+  source to re-derive them from.
+- A nutrient the model omits is unknown: absent from the jsonb, rendered as "no data" —
+  never a zero bar. The null-vs-zero distinction is still load-bearing.
+- The Gemini key lives only in Edge Function secrets, sent in a header, never in the client.
 
 Targets are **UK Reference Nutrient Intakes (RNI)**, not US RDAs. They differ meaningfully
-on iron, folate and vitamin D. Seed an `rni_targets` table keyed by sex and age band.
+on iron, folate and vitamin D. The `rni_targets` table is keyed by sex and age band, and
+`nutrient_defs` names the tracked nutrient keys — the meal-parse schema mirrors it.
 
 ---
 

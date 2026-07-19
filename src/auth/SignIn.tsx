@@ -58,7 +58,7 @@ export function SignIn() {
         <button
           type="submit"
           disabled={pending}
-          className="h-11 w-full rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          className="h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
         >
           {pending ? 'Signing in' : 'Sign in'}
         </button>
