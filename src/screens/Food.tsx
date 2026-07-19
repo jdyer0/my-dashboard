@@ -175,10 +175,7 @@ export function Food() {
 
   if (!data) return null
 
-  const loggedFoods = data.todayEntries.map((e) => ({
-    amountG: e.amount_g,
-    per100g: e.foods.per_100g,
-  }))
+  const loggedFoods = data.todayEntries.map((e) => ({ nutrients: e.nutrients }))
   const kcal = nutrientTotal(loggedFoods, 'energy_kcal').value
   const protein = nutrientTotal(loggedFoods, 'protein').value
   const carbs = nutrientTotal(loggedFoods, 'carbohydrate').value
@@ -237,33 +234,22 @@ export function Food() {
         </BootItem>
 
         <BootItem className="mt-2.5">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => navigate('/food/log')}
-              className="btn-glow rounded-card border border-line bg-surface p-3 text-left transition-transform duration-150 ease-instrument active:scale-[0.98]"
-            >
-              <span className="flex items-baseline justify-between">
-                <span className="text-card-title text-ink">Log food</span>
-                <span className="text-metric-sm font-mono tabular-nums text-ink">
-                  {data.todayEntries.length}
-                </span>
+          <button
+            type="button"
+            onClick={() => navigate('/food/chat')}
+            className="btn-glow w-full rounded-card border border-line bg-surface p-3 text-left transition-transform duration-150 ease-instrument active:scale-[0.98]"
+          >
+            <span className="flex items-baseline justify-between">
+              <span className="text-card-title text-ink">Describe a meal</span>
+              <span className="text-metric-sm font-mono tabular-nums text-ink">
+                {data.todayEntries.length}
               </span>
-              <span className="mt-0.5 block text-label text-ink-faint">
-                {data.todayEntries.length === 1 ? 'food logged today' : 'foods logged today'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/food/chat')}
-              className="btn-glow rounded-card border border-line bg-surface p-3 text-left transition-transform duration-150 ease-instrument active:scale-[0.98]"
-            >
-              <span className="block text-card-title text-ink">Describe a meal</span>
-              <span className="mt-0.5 block text-label text-ink-faint">
-                the coach estimates and logs it
-              </span>
-            </button>
-          </div>
+            </span>
+            <span className="mt-0.5 block text-label text-ink-faint">
+              the coach estimates and logs it ·{' '}
+              {data.todayEntries.length === 1 ? 'item logged today' : 'items logged today'}
+            </span>
+          </button>
         </BootItem>
 
         <BootItem className="mt-2.5">
@@ -292,7 +278,7 @@ export function Food() {
                 <h2 className="text-card-title text-ink">{label}</h2>
                 <ul className="mt-1">
                   {entries.map((entry) => {
-                    const entryKcal = entry.foods.per_100g.energy_kcal
+                    const entryKcal = entry.nutrients.energy_kcal
                     return (
                       <li key={entry.id}>
                         <Link
@@ -300,12 +286,12 @@ export function Food() {
                           className="flex min-h-[44px] items-center justify-between border-b border-line py-2 last:border-b-0"
                         >
                           <span className="min-w-0 flex-1 truncate pr-3 text-body text-ink-dim">
-                            {entry.foods.name}
+                            {entry.name}
                           </span>
                           <span className="shrink-0 text-label font-mono tabular-nums text-ink-faint">
                             {Math.round(entry.amount_g)} g
                             {entryKcal && !entryKcal.is_trace
-                              ? ` · ${Math.round((entryKcal.value * entry.amount_g) / 100)} kcal`
+                              ? ` · ${Math.round(entryKcal.value)} kcal`
                               : ''}
                           </span>
                         </Link>

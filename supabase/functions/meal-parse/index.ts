@@ -1,10 +1,11 @@
-// meal-parse — turns a free-text meal description into structured food items
+// meal-parse — turns a free-text meal description into logged-ready food items
 // using Gemini's free tier, so the key never reaches the client and nothing
-// is billed. The client matches each item against the local foods table and
-// logs through the normal food_log path; if this function is unreachable the
-// client falls back to its rule-based parser.
+// is billed. The model splits the meal into foods and estimates each portion's
+// macro- and micronutrients directly; there is no foods table to match
+// against, so its estimate is the record.
 //
-// POST { text: string } -> { items: [{ name, search_term, amount_g }] }
+// POST { text: string } -> { items: [{ name, amount_g, nutrients }] }
+// nutrients holds absolute amounts for the portion, keyed by nutrient_defs.key.
 //
 // The gateway verifies the caller's JWT. Requires a free key from
 // https://aistudio.google.com/apikey :
@@ -28,6 +29,32 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+// Mirrors the nutrient_defs seed (migration 0003). Macros are required —
+// the model can always estimate them; micros it may omit when it genuinely
+// has no idea, which the app renders as "no data", never zero.
+const NUTRIENTS: { key: string; label: string; unit: string; required: boolean }[] = [
+  { key: 'energy_kcal', label: 'energy', unit: 'kcal', required: true },
+  { key: 'protein', label: 'protein', unit: 'g', required: true },
+  { key: 'carbohydrate', label: 'carbohydrate', unit: 'g', required: true },
+  { key: 'sugars', label: 'sugars', unit: 'g', required: false },
+  { key: 'fat', label: 'fat', unit: 'g', required: true },
+  { key: 'saturates', label: 'saturated fat', unit: 'g', required: false },
+  { key: 'fibre', label: 'fibre (AOAC)', unit: 'g', required: false },
+  { key: 'salt', label: 'salt', unit: 'g', required: false },
+  { key: 'iron', label: 'iron', unit: 'mg', required: false },
+  { key: 'calcium', label: 'calcium', unit: 'mg', required: false },
+  { key: 'magnesium', label: 'magnesium', unit: 'mg', required: false },
+  { key: 'zinc', label: 'zinc', unit: 'mg', required: false },
+  { key: 'potassium', label: 'potassium', unit: 'mg', required: false },
+  { key: 'selenium', label: 'selenium', unit: 'µg', required: false },
+  { key: 'iodine', label: 'iodine', unit: 'µg', required: false },
+  { key: 'vitamin_a', label: 'vitamin A (retinol equivalents)', unit: 'µg', required: false },
+  { key: 'vitamin_d', label: 'vitamin D', unit: 'µg', required: false },
+  { key: 'vitamin_b12', label: 'vitamin B12', unit: 'µg', required: false },
+  { key: 'folate', label: 'folate', unit: 'µg', required: false },
+  { key: 'vitamin_c', label: 'vitamin C', unit: 'mg', required: false },
+]
+
 // OpenAPI-subset schema, Gemini's structured-output format.
 const MEAL_SCHEMA = {
   type: 'OBJECT',
@@ -37,20 +64,28 @@ const MEAL_SCHEMA = {
       type: 'ARRAY',
       items: {
         type: 'OBJECT',
-        required: ['name', 'search_term', 'amount_g'],
+        required: ['name', 'amount_g', 'nutrients'],
         properties: {
           name: {
             type: 'STRING',
             description: 'The food as the user described it, e.g. "a handful of broccoli"',
           },
-          search_term: {
-            type: 'STRING',
-            description:
-              'Short generic UK food name for database search, e.g. "chicken breast grilled"',
-          },
           amount_g: {
             type: 'INTEGER',
             description: 'Estimated weight eaten in grams, cooked weight unless stated raw',
+          },
+          nutrients: {
+            type: 'OBJECT',
+            required: NUTRIENTS.filter((n) => n.required).map((n) => n.key),
+            properties: Object.fromEntries(
+              NUTRIENTS.map((n) => [
+                n.key,
+                {
+                  type: 'NUMBER',
+                  description: `Total ${n.label} in ${n.unit} for the whole portion eaten`,
+                },
+              ]),
+            ),
           },
         },
       },
@@ -58,11 +93,13 @@ const MEAL_SCHEMA = {
   },
 }
 
-const SYSTEM = `You parse meal descriptions into individual food items for a UK nutrition tracker.
+const SYSTEM = `You are the nutrition estimator for a single-user UK food diary.
 
-The user describes what they ate in plain English. Break it into separate foods and estimate the weight in grams of each, as eaten (cooked weight unless stated otherwise). Composite dishes the user names as one thing ("a full English breakfast", "chicken stir fry") should be broken into their typical component foods.
+The user describes what they ate in plain English. Break it into separate foods, estimate the weight in grams of each as eaten (cooked weight unless stated otherwise), then estimate the nutrients in each portion. Composite dishes the user names as one thing ("a full English breakfast", "chicken stir fry") should be broken into their typical component foods.
 
-For search_term, give a short generic UK food name likely to match the McCance & Widdowson (CoFID) database — e.g. "chicken breast grilled", "rice white boiled", "broccoli boiled". No brands unless the user names one. Use UK terms (courgette not zucchini, porridge not oatmeal).
+Nutrient values are absolute amounts for the whole portion eaten — never per 100 g. Use the units given in the schema exactly: macros in grams, energy in kcal, minerals and vitamin C in mg, trace nutrients and vitamins A/D/B12 and folate in µg. Salt is salt in grams, not sodium. Vitamin A is retinol equivalents.
+
+Base estimates on standard UK food composition (McCance & Widdowson). Prefer a plausible estimate over leaving a nutrient out; omit a micronutrient only when you genuinely cannot estimate it. Never report a nutrient as 0 unless the food really contains none.
 
 Portion estimates when no amount is stated, typical UK portions: a chicken breast 150 g, a serving of cooked rice or pasta 180 g, a slice of bread 40 g, a medium potato 180 g, a handful of nuts 30 g, a tablespoon of oil 11 g, a splash of milk 30 g, a glass of milk 200 g.
 
@@ -73,7 +110,7 @@ interface GeminiResponse {
 }
 
 interface ParsedMeal {
-  items: { name: string; search_term: string; amount_g: number }[]
+  items: { name: string; amount_g: number; nutrients: Record<string, number> }[]
 }
 
 Deno.serve(async (req) => {
@@ -104,7 +141,7 @@ Deno.serve(async (req) => {
         responseMimeType: 'application/json',
         responseSchema: MEAL_SCHEMA,
         temperature: 0.2,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
       },
     }),
   })

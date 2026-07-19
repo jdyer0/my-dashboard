@@ -1,10 +1,8 @@
 import { supabase } from '../lib/supabase'
-import type { NutrientDef, Per100g, RniTarget } from '../lib/nutrition'
-import type { ParsedMealItem } from './mealParse'
-import type { FdcResult, Food, FoodLogEntry, NutritionSettings, Profile } from './types'
+import type { NutrientDef, NutrientMap, RniTarget } from '../lib/nutrition'
+import type { FoodLogEntry, NutritionSettings, ParsedMealItem, Profile } from './types'
 
-const FOOD_COLS = 'id, name, brand, source, per_100g, default_portion_g, portion_label'
-const ENTRY_COLS = `id, food_id, logged_at, meal, amount_g, foods (${FOOD_COLS})`
+const ENTRY_COLS = 'id, name, logged_at, meal, amount_g, nutrients'
 
 async function userId(): Promise<string> {
   const { data } = await supabase.auth.getSession()
@@ -64,125 +62,57 @@ export async function saveSettings(settings: NutritionSettings): Promise<void> {
   if (error) throw error
 }
 
-/** Local name search. The trigram index makes ilike '%q%' fast; ranking
-    (prefix first, then shortest name) happens client-side. */
-export async function searchFoods(q: string): Promise<Food[]> {
-  const { data, error } = await supabase
-    .from('foods')
-    .select(FOOD_COLS)
-    .ilike('name', `%${q.replace(/%/g, '')}%`)
-    .limit(30)
-  if (error) throw error
-  const lower = q.toLowerCase()
-  return (data as Food[]).sort((a, b) => {
-    const aPrefix = a.name.toLowerCase().startsWith(lower) ? 0 : 1
-    const bPrefix = b.name.toLowerCase().startsWith(lower) ? 0 : 1
-    return aPrefix - bPrefix || a.name.length - b.name.length
-  })
-}
+/** Nutrient values the meal-parse function may return, as plain numbers. */
+type RemoteItem = { name?: unknown; amount_g?: unknown; nutrients?: unknown }
 
-export async function fetchFood(id: string): Promise<Food | null> {
-  const { data, error } = await supabase.from('foods').select(FOOD_COLS).eq('id', id).maybeSingle()
-  if (error) throw error
-  return data
-}
-
-/** Most people eat the same 20 foods: recent entries, deduped by food,
-    most-frequent first, recency as the tiebreak. */
-export async function recentFoods(): Promise<Food[]> {
-  const { data, error } = await supabase
-    .from('food_log')
-    .select(`food_id, foods (${FOOD_COLS})`)
-    .order('logged_at', { ascending: false })
-    .limit(100)
-  if (error) throw error
-  const counts = new Map<string, { food: Food; count: number; firstSeen: number }>()
-  // supabase-js types embedded to-one relations as arrays; PostgREST returns
-  // an object for a many-to-one FK join, so the cast goes via unknown.
-  const rows = data as unknown as { food_id: string; foods: Food }[]
-  for (const [index, row] of rows.entries()) {
-    const existing = counts.get(row.food_id)
-    if (existing) existing.count++
-    else counts.set(row.food_id, { food: row.foods, count: 1, firstSeen: index })
+function toNutrientMap(raw: unknown): NutrientMap {
+  if (typeof raw !== 'object' || raw === null) return {}
+  const map: NutrientMap = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+      map[key] = { value }
+    }
   }
-  return [...counts.values()]
-    .sort((a, b) => b.count - a.count || a.firstSeen - b.firstSeen)
-    .slice(0, 20)
-    .map((c) => c.food)
+  return map
 }
 
 /** Sends a meal description to the meal-parse Edge Function (Gemini free
-    tier) and maps the result onto the rule-parser's item shape, so the chat
-    screen treats both parsers identically. Throws when the function is
-    unreachable — callers fall back to parseMealText. */
+    tier), which splits it into foods and estimates each portion's macro- and
+    micronutrients directly — there is no foods table to match against. */
 export async function parseMealRemote(text: string): Promise<ParsedMealItem[]> {
   const { data, error } = await supabase.functions.invoke('meal-parse', {
     body: { text },
   })
   if (error) throw error
-  const items = (data as { items: { name: string; search_term: string; amount_g: number }[] })
-    .items
-  return items.map((item) => ({
-    raw: item.name,
-    query: item.search_term
-      .toLowerCase()
-      .replace(/[^a-z0-9 ]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim(),
-    grams: Math.max(1, Math.round(item.amount_g)),
-    count: null,
-  }))
-}
-
-export async function fdcSearch(q: string): Promise<FdcResult[]> {
-  const { data, error } = await supabase.functions.invoke('food-search-fdc', {
-    body: { action: 'search', q },
-  })
-  if (error) throw error
-  return (data as { results: FdcResult[] }).results
-}
-
-export async function fdcImport(fdcId: number): Promise<Food> {
-  const { data, error } = await supabase.functions.invoke('food-search-fdc', {
-    body: { action: 'import', fdcId },
-  })
-  if (error) throw error
-  return (data as { food: Food }).food
-}
-
-export async function createCustomFood(
-  name: string,
-  per100g: Per100g,
-  defaultPortionG: number,
-  portionLabel: string | null,
-): Promise<Food> {
-  const { data, error } = await supabase
-    .from('foods')
-    .insert({
-      name,
-      source: 'custom',
-      per_100g: per100g,
-      default_portion_g: defaultPortionG,
-      portion_label: portionLabel,
-      created_by: await userId(),
+  const items = (data as { items?: RemoteItem[] }).items
+  if (!Array.isArray(items)) throw new Error('Malformed response')
+  return items
+    .map((item): ParsedMealItem | null => {
+      const name = typeof item.name === 'string' ? item.name.trim() : ''
+      const amountG =
+        typeof item.amount_g === 'number' && Number.isFinite(item.amount_g)
+          ? Math.max(1, Math.round(item.amount_g))
+          : null
+      if (!name || amountG === null) return null
+      return { name, amount_g: amountG, nutrients: toNutrientMap(item.nutrients) }
     })
-    .select(FOOD_COLS)
-    .single()
-  if (error) throw error
-  return data
+    .filter((item): item is ParsedMealItem => item !== null)
 }
 
-export async function logFood(
-  foodId: string,
+export async function logMeal(
+  items: { name: string; amountG: number; nutrients: NutrientMap }[],
   meal: FoodLogEntry['meal'],
-  amountG: number,
 ): Promise<void> {
-  const { error } = await supabase.from('food_log').insert({
-    user_id: await userId(),
-    food_id: foodId,
-    meal,
-    amount_g: amountG,
-  })
+  const uid = await userId()
+  const { error } = await supabase.from('food_log').insert(
+    items.map((item) => ({
+      user_id: uid,
+      name: item.name,
+      meal,
+      amount_g: item.amountG,
+      nutrients: item.nutrients,
+    })),
+  )
   if (error) throw error
 }
 
@@ -193,17 +123,18 @@ export async function fetchEntry(id: string): Promise<FoodLogEntry | null> {
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
-  return data as unknown as FoodLogEntry | null
+  return data as FoodLogEntry | null
 }
 
 export async function updateEntry(
   id: string,
   amountG: number,
   meal: FoodLogEntry['meal'],
+  nutrients: NutrientMap,
 ): Promise<void> {
   const { error } = await supabase
     .from('food_log')
-    .update({ amount_g: amountG, meal })
+    .update({ amount_g: amountG, meal, nutrients })
     .eq('id', id)
   if (error) throw error
 }
@@ -223,5 +154,5 @@ export async function fetchRecentLog(days: number): Promise<FoodLogEntry[]> {
     .gte('logged_at', since)
     .order('logged_at')
   if (error) throw error
-  return data as unknown as FoodLogEntry[]
+  return data as FoodLogEntry[]
 }

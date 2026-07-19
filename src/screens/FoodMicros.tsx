@@ -89,9 +89,8 @@ export function FoodMicros() {
   const age = ageInYears(data.profile.birth_date, new Date())
   const micros = data.defs.filter((d) => d.kind === 'micro')
   const loggedFoods = data.todayEntries.map((e) => ({
-    name: e.foods.name,
-    amountG: e.amount_g,
-    per100g: e.foods.per_100g,
+    name: e.name,
+    nutrients: e.nutrients,
   }))
 
   return (

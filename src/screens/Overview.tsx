@@ -119,10 +119,10 @@ function useNutrition(): Nutrition {
         const weekKeys = new Set(recentLondonDayKeys(now, 7))
         const todayFoods = log
           .filter((e) => londonDayKey(new Date(e.logged_at)) === todayKey)
-          .map((e) => ({ amountG: e.amount_g, per100g: e.foods.per_100g }))
+          .map((e) => ({ nutrients: e.nutrients }))
         const weekFoods = log
           .filter((e) => weekKeys.has(londonDayKey(new Date(e.logged_at))))
-          .map((e) => ({ amountG: e.amount_g, per100g: e.foods.per_100g }))
+          .map((e) => ({ nutrients: e.nutrients }))
 
         const targets = resolveTargets(profile, settings, rni, now)
         let worst: { name: string; pct: number } | null = null

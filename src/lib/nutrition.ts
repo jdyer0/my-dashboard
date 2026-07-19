@@ -7,8 +7,9 @@ export interface NutrientValue {
   is_trace?: boolean
 }
 
-/** Per-100g nutrient map; unknown nutrients are absent, never zero. */
-export type Per100g = Record<string, NutrientValue | undefined>
+/** Absolute nutrient amounts for a logged portion; unknown nutrients are
+    absent, never zero. */
+export type NutrientMap = Record<string, NutrientValue | undefined>
 
 export interface NutrientDef {
   key: string
@@ -27,16 +28,16 @@ export interface RniTarget {
 }
 
 export interface LoggedFood {
-  amountG: number
-  per100g: Per100g
+  nutrients: NutrientMap
 }
 
-/** Scale a per-100g map to an amount. Trace stays trace; unknown stays absent. */
-export function scaleNutrients(per100g: Per100g, amountG: number): Record<string, NutrientValue> {
+/** Scale a nutrient map by a factor — used when the user corrects a portion's
+    grams. Trace stays trace; unknown stays absent. */
+export function scaleNutrients(nutrients: NutrientMap, factor: number): Record<string, NutrientValue> {
   const scaled: Record<string, NutrientValue> = {}
-  for (const [key, v] of Object.entries(per100g)) {
+  for (const [key, v] of Object.entries(nutrients)) {
     if (!v) continue
-    scaled[key] = v.is_trace ? { value: 0, is_trace: true } : { value: (v.value * amountG) / 100 }
+    scaled[key] = v.is_trace ? { value: 0, is_trace: true } : { value: v.value * factor }
   }
   return scaled
 }
@@ -56,19 +57,19 @@ export function nutrientTotal(entries: LoggedFood[], key: string): NutrientTotal
   let value = 0
   let known = 0
   for (const entry of entries) {
-    const v = entry.per100g[key]
+    const v = entry.nutrients[key]
     if (!v) continue
     known++
-    if (!v.is_trace) value += (v.value * entry.amountG) / 100
+    if (!v.is_trace) value += v.value
   }
   return { value, known, total: entries.length }
 }
 
 /**
- * Average daily intake over a window, from whatever foods carry the nutrient.
- * Partial data is shown: the figure is null only when no logged food has any
+ * Average daily intake over a window, from whatever entries carry the nutrient.
+ * Partial data is shown: the figure is null only when no logged entry has any
  * value for the nutrient (genuinely unknown), never a fabricated zero. When
- * some foods lack the nutrient the total is under-counted, not wrong.
+ * some entries lack the nutrient the total is under-counted, not wrong.
  */
 export function averageDailyIntake(entries: LoggedFood[], key: string, days: number): number | null {
   if (entries.length === 0 || days <= 0) return null
@@ -134,46 +135,22 @@ export function fatTargetG(kcalTarget: number): number {
 
 export const FIBRE_TARGET_G = 30
 
-// The micronutrients tracked against UK RNI (nutrient_defs where kind='micro').
-// Kept in sync with migration 0003's seed; used to prefer micro-rich foods.
-export const MICRO_KEYS = [
-  'iron',
-  'calcium',
-  'magnesium',
-  'zinc',
-  'potassium',
-  'selenium',
-  'iodine',
-  'vitamin_a',
-  'vitamin_d',
-  'vitamin_b12',
-  'folate',
-  'vitamin_c',
-] as const
-
-/** How many tracked micronutrients a food carries a value for. Trace counts
-    as present — it is a known measurement, not missing data. */
-export function microDataCount(per100g: Per100g): number {
-  return MICRO_KEYS.reduce((n, key) => (per100g[key] ? n + 1 : n), 0)
-}
-
 export interface Contribution {
   name: string
   value: number
 }
 
-/** Which foods contributed most to a nutrient, aggregated by food name. */
+/** Which entries contributed most to a nutrient, aggregated by name. */
 export function contributors(
   entries: (LoggedFood & { name: string })[],
   key: string,
 ): Contribution[] {
   const byName = new Map<string, number>()
   for (const entry of entries) {
-    const v = entry.per100g[key]
+    const v = entry.nutrients[key]
     if (!v || v.is_trace) continue
-    const amount = (v.value * entry.amountG) / 100
-    if (amount <= 0) continue
-    byName.set(entry.name, (byName.get(entry.name) ?? 0) + amount)
+    if (v.value <= 0) continue
+    byName.set(entry.name, (byName.get(entry.name) ?? 0) + v.value)
   }
   return [...byName.entries()]
     .map(([name, value]) => ({ name, value }))

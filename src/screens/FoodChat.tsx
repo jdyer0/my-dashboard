@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { logFood, parseMealRemote, searchFoods } from '../food/data'
-import { parseMealText, resolveAmountG, type ParsedMealItem } from '../food/mealParse'
-import { mealForTime, microDataCount, type Meal } from '../lib/nutrition'
-import type { Food } from '../food/types'
+import { logMeal, parseMealRemote } from '../food/data'
+import { mealForTime, scaleNutrients, type Meal, type NutrientMap } from '../lib/nutrition'
 
 const MEALS: { key: Meal; label: string }[] = [
   { key: 'breakfast', label: 'Breakfast' },
@@ -12,41 +10,13 @@ const MEALS: { key: Meal; label: string }[] = [
   { key: 'snack', label: 'Snack' },
 ]
 
-const MAX_MATCHES = 6
-
 interface ReviewRow {
-  parsed: ParsedMealItem
-  matches: Food[]
-  foodId: string | null
+  name: string
+  /** Grams the estimate was made for — editing the amount rescales from this. */
+  baseAmountG: number
+  /** Nutrients for baseAmountG, as the coach estimated them. */
+  nutrients: NutrientMap
   amount: string
-  /** True once the user has typed in the amount field — stops the prefill
-      from overwriting their number when they switch the matched food. */
-  edited: boolean
-}
-
-/** The foods search is a single-substring ilike, so multi-word queries like
-    "grilled chicken breast" miss CoFID's comma-separated names. Search on the
-    longest word, then rank by how many query words the name contains, breaking
-    ties toward foods that carry micronutrient data so the auto-picked match
-    feeds the micros screen rather than logging a macro-only entry. */
-async function findMatches(query: string): Promise<Food[]> {
-  const words = query.split(' ').filter((w) => w.length > 2)
-  const terms = words.length > 0 ? [...words].sort((a, b) => b.length - a.length) : [query]
-  for (const term of terms) {
-    const found = await searchFoods(term)
-    if (found.length === 0) continue
-    const lower = words.map((w) => w.toLowerCase())
-    return found
-      .map((food) => ({
-        food,
-        score: lower.filter((w) => food.name.toLowerCase().includes(w)).length,
-        micros: microDataCount(food.per_100g),
-      }))
-      .sort((a, b) => b.score - a.score || b.micros - a.micros)
-      .map((scored) => scored.food)
-      .slice(0, MAX_MATCHES)
-  }
-  return []
 }
 
 function rowAmountG(row: ReviewRow): number | null {
@@ -54,12 +24,16 @@ function rowAmountG(row: ReviewRow): number | null {
   return Number.isFinite(g) && g > 0 && g <= 5000 ? g : null
 }
 
+/** The row's nutrients scaled to the amount in the input. */
+function rowNutrients(row: ReviewRow): NutrientMap {
+  const amountG = rowAmountG(row) ?? row.baseAmountG
+  return scaleNutrients(row.nutrients, amountG / row.baseAmountG)
+}
+
 function rowKcal(row: ReviewRow): number | null {
-  const food = row.matches.find((f) => f.id === row.foodId)
-  const amountG = rowAmountG(row)
-  const kcal = food?.per_100g.energy_kcal
-  if (!food || amountG === null || !kcal || kcal.is_trace) return null
-  return Math.round((kcal.value * amountG) / 100)
+  if (rowAmountG(row) === null) return null
+  const kcal = rowNutrients(row).energy_kcal
+  return kcal && !kcal.is_trace ? Math.round(kcal.value) : null
 }
 
 export function FoodChat() {
@@ -77,69 +51,38 @@ export function FoodChat() {
     setParsing(true)
     setFailed(null)
     setRows(null)
-    // Gemini understands composite meals; the rule parser is the offline /
-    // rate-limited fallback so the screen never depends on the network.
-    let items: ParsedMealItem[]
     try {
-      items = await parseMealRemote(described)
-    } catch {
-      items = []
-    }
-    if (items.length === 0) items = parseMealText(described)
-    if (items.length === 0) {
-      setFailed("Couldn't find any foods in that. Describe the meal again.")
-      setParsing(false)
-      return
-    }
-    try {
-      const built = await Promise.all(
-        items.map(async (item): Promise<ReviewRow> => {
-          const matches = await findMatches(item.query)
-          const first = matches[0]
-          return {
-            parsed: item,
-            matches,
-            foodId: first?.id ?? null,
-            amount: first ? String(resolveAmountG(item, first.default_portion_g)) : '',
-            edited: false,
-          }
-        }),
+      const items = await parseMealRemote(described)
+      if (items.length === 0) {
+        setFailed("Couldn't find any foods in that. Describe the meal again.")
+        return
+      }
+      setRows(
+        items.map((item) => ({
+          name: item.name,
+          baseAmountG: item.amount_g,
+          nutrients: item.nutrients,
+          amount: String(item.amount_g),
+        })),
       )
-      setRows(built)
     } catch {
-      setFailed('Search failed. Try again.')
+      setFailed("Couldn't estimate that meal. Try again.")
     } finally {
       setParsing(false)
     }
   }
 
-  function updateRow(index: number, patch: Partial<ReviewRow>) {
+  function updateAmount(index: number, amount: string) {
     setRows((current) =>
-      current ? current.map((row, i) => (i === index ? { ...row, ...patch } : row)) : current,
+      current ? current.map((row, i) => (i === index ? { ...row, amount } : row)) : current,
     )
-  }
-
-  function pickFood(index: number, foodId: string) {
-    setRows((current) => {
-      if (!current) return current
-      return current.map((row, i) => {
-        if (i !== index) return row
-        const food = row.matches.find((f) => f.id === foodId)
-        const amount =
-          !row.edited && row.parsed.grams === null && food
-            ? String(resolveAmountG(row.parsed, food.default_portion_g))
-            : row.amount
-        return { ...row, foodId, amount }
-      })
-    })
   }
 
   function removeRow(index: number) {
     setRows((current) => (current ? current.filter((_, i) => i !== index) : current))
   }
 
-  const loggable = (rows ?? []).filter((row) => row.foodId && rowAmountG(row) !== null)
-  const unmatched = (rows ?? []).filter((row) => !row.foodId)
+  const loggable = (rows ?? []).filter((row) => rowAmountG(row) !== null)
   const totalKcal = loggable.reduce((sum, row) => sum + (rowKcal(row) ?? 0), 0)
 
   async function log() {
@@ -147,9 +90,14 @@ export function FoodChat() {
     setSaving(true)
     setFailed(null)
     try {
-      for (const row of loggable) {
-        await logFood(row.foodId as string, meal, rowAmountG(row) as number)
-      }
+      await logMeal(
+        loggable.map((row) => ({
+          name: row.name,
+          amountG: rowAmountG(row) as number,
+          nutrients: rowNutrients(row),
+        })),
+        meal,
+      )
       navigate('/food')
     } catch {
       setSaving(false)
@@ -195,50 +143,35 @@ export function FoodChat() {
                 const kcal = rowKcal(row)
                 return (
                   <li
-                    key={`${row.parsed.raw}-${index}`}
+                    key={`${row.name}-${index}`}
                     className="border-b border-line py-2.5 last:border-b-0"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="min-w-0 flex-1 truncate pr-2 text-label text-ink-faint">
-                        {row.parsed.raw}
+                      <span className="min-w-0 flex-1 truncate pr-2 text-body text-ink-dim">
+                        {row.name}
                       </span>
                       <button
                         type="button"
                         onClick={() => removeRow(index)}
-                        aria-label={`Remove ${row.parsed.raw}`}
+                        aria-label={`Remove ${row.name}`}
                         className="flex h-11 w-11 shrink-0 items-center justify-center text-body text-ink-faint transition-transform duration-150 ease-instrument active:scale-[0.98]"
                       >
                         ✕
                       </button>
                     </div>
-                    {row.foodId ? (
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={row.foodId}
-                          onChange={(e) => pickFood(index, e.target.value)}
-                          aria-label={`Matched food for ${row.parsed.raw}`}
-                          className="h-11 min-w-0 flex-1 rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright"
-                        >
-                          {row.matches.map((food) => (
-                            <option key={food.id} value={food.id}>
-                              {food.name}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          inputMode="decimal"
-                          value={row.amount}
-                          onChange={(e) => updateRow(index, { amount: e.target.value, edited: true })}
-                          aria-label={`Amount in grams for ${row.parsed.raw}`}
-                          className="h-11 w-20 shrink-0 rounded-ctl border border-line bg-surface px-2 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
-                        />
-                        <span className="w-14 shrink-0 text-right text-label font-mono tabular-nums text-ink-faint">
-                          {kcal !== null ? `${kcal} kcal` : 'g'}
-                        </span>
-                      </div>
-                    ) : (
-                      <p className="pb-1 text-body text-warn">No match in your foods</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <input
+                        inputMode="decimal"
+                        value={row.amount}
+                        onChange={(e) => updateAmount(index, e.target.value)}
+                        aria-label={`Amount in grams for ${row.name}`}
+                        className="h-11 w-20 shrink-0 rounded-ctl border border-line bg-surface px-2 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
+                      />
+                      <span className="text-label text-ink-faint">g</span>
+                      <span className="min-w-0 flex-1 text-right text-label font-mono tabular-nums text-ink-faint">
+                        {kcal !== null ? `${kcal} kcal` : 'check the amount'}
+                      </span>
+                    </div>
                   </li>
                 )
               })}
@@ -272,11 +205,6 @@ export function FoodChat() {
               Log {loggable.length} {loggable.length === 1 ? 'item' : 'items'}
               {totalKcal > 0 ? ` · ${totalKcal} kcal` : ''}
             </button>
-            {unmatched.length > 0 && (
-              <p className="mt-2 text-label text-ink-faint">
-                Unmatched items are skipped. Log them from search.
-              </p>
-            )}
           </section>
         </>
       )}
