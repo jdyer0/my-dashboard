@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { deleteEntry, fetchEntry, updateEntry } from '../food/data'
 import { scaleNutrients, type Meal } from '../lib/nutrition'
 import type { FoodLogEntry } from '../food/types'
+import { PAGE, PageHeader } from '../shell/PageHeader'
 
 const MEALS: { key: Meal; label: string }[] = [
   { key: 'breakfast', label: 'Breakfast' },
@@ -48,7 +49,7 @@ export function FoodEntry() {
 
   if (failed) {
     return (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">Couldn't load the entry. Go back and retry.</p>
       </div>
     )
@@ -91,12 +92,10 @@ export function FoodEntry() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">{entry.name}</h1>
-      </header>
+    <div className={PAGE}>
+      <PageHeader back={{ to: '/food', label: 'Diary' }} title={entry.name} />
 
-      <section className="rounded-card border border-line bg-surface p-3">
+      <section className="rounded-card border border-line bg-surface p-3 lg:max-w-xl">
         <label htmlFor="amount" className="text-label text-ink-faint">
           Amount g
         </label>
@@ -154,7 +153,7 @@ export function FoodEntry() {
         type="button"
         onClick={() => void remove()}
         disabled={saving}
-        className="mt-6 h-11 w-full rounded-ctl border border-line text-body text-alert transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+        className="mt-6 h-11 w-full rounded-ctl border border-line text-body text-alert transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint lg:max-w-xl"
       >
         {confirmDelete ? 'Tap again to delete' : 'Delete entry'}
       </button>

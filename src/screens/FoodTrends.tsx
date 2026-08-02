@@ -9,6 +9,7 @@ import { MIN_LOGGED_DAYS, MIN_WEIGH_INS, type GoalStatus } from '../lib/adaptive
 import { nutrientTotal } from '../lib/nutrition'
 import { londonDayKey } from '../lib/londonDay'
 import { CARD, LoadFailed, StatRow } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 import { signedKg } from '../food/format'
 
 const RANGES = [
@@ -87,7 +88,7 @@ export function FoodTrends() {
   return (
     <BootSequence>
       <BootItem className="mb-2.5">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 lg:max-w-md">
           {RANGES.map(({ days, label }) => (
             <button
               key={days}
@@ -105,6 +106,8 @@ export function FoodTrends() {
         </div>
       </BootItem>
 
+      <div className={SPLIT}>
+      <div className={COL}>
       {/* Expenditure — the number the whole engine exists to produce. */}
       <BootItem className={CARD}>
         <div className="flex items-baseline justify-between">
@@ -182,8 +185,11 @@ export function FoodTrends() {
         />
       </BootItem>
 
+      </div>
+
+      <div className={COL}>
       {/* Intake against the target the user is actually eating to. */}
-      <BootItem className={`mt-2.5 ${CARD}`}>
+      <BootItem className={`mt-2.5 ${CARD} lg:mt-0`}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-card-title text-ink">Intake</h2>
           <span className="text-label font-mono tabular-nums text-ink-faint">
@@ -248,6 +254,8 @@ export function FoodTrends() {
           referenceLabel="dashed: target"
         />
       </BootItem>
+      </div>
+      </div>
     </BootSequence>
   )
 }

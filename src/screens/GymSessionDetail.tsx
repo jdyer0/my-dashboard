@@ -4,6 +4,7 @@ import { deleteSession, fetchSession, listAllSets, listExercises } from '../gym/
 import { e1rm, prSetIds, totalVolumeKg } from '../gym/e1rm'
 import { clockTime, fmtKg, sessionDate } from '../gym/format'
 import type { Exercise, GymSession as Session, GymSet } from '../gym/types'
+import { PAGE, PageHeader } from '../shell/PageHeader'
 
 export function GymSessionDetail() {
   const { id } = useParams()
@@ -81,7 +82,7 @@ export function GymSessionDetail() {
 
   if (failed) {
     return (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">Couldn't load the session. Go back and retry.</p>
       </div>
     )
@@ -92,17 +93,16 @@ export function GymSessionDetail() {
   const started = new Date(session.started_at)
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">{sessionDate.format(started)}</h1>
-        <p className="mt-0.5 text-label font-mono tabular-nums text-ink-faint">
-          {clockTime.format(started)}
-          {session.ended_at ? `–${clockTime.format(new Date(session.ended_at))}` : ''} ·{' '}
-          {sessionSets.length} sets · {fmtKg(totalVolumeKg(sessionSets))} kg
-        </p>
-      </header>
+    <div className={PAGE}>
+      <PageHeader
+        back={{ to: '/gym/history', label: 'History' }}
+        title={sessionDate.format(started)}
+        subtitle={`${clockTime.format(started)}${
+          session.ended_at ? `–${clockTime.format(new Date(session.ended_at))}` : ''
+        } · ${sessionSets.length} sets · ${fmtKg(totalVolumeKg(sessionSets))} kg`}
+      />
 
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-2.5 lg:space-y-0 2xl:grid-cols-3">
         {groups.map((group) => (
           <section key={group.exerciseId} className="rounded-card border border-line bg-surface p-3">
             <h2 className="text-card-title text-ink">
@@ -136,7 +136,7 @@ export function GymSessionDetail() {
         type="button"
         onClick={() => void remove()}
         disabled={deleting}
-        className="mt-6 h-11 w-full rounded-ctl border border-line text-body text-alert transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+        className="mt-6 h-11 w-full rounded-ctl border border-line text-body text-alert transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint lg:max-w-xs"
       >
         {confirmDelete ? 'Tap again to delete' : 'Delete session'}
       </button>

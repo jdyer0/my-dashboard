@@ -13,6 +13,7 @@ import {
 } from '../lib/nutrition'
 import { londonDayKey } from '../lib/londonDay'
 import { CARD, LoadFailed, ProfilePrompt } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 
 const WINDOWS = [
   { days: 1, label: 'Today' },
@@ -64,7 +65,7 @@ export function FoodMicros() {
   return (
     <BootSequence>
       <BootItem>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 lg:max-w-md">
           {WINDOWS.map(({ days, label }) => (
             <button
               key={days}
@@ -101,28 +102,36 @@ export function FoodMicros() {
             </p>
           </BootItem>
 
-          <MicroList
-            title="Vitamins"
-            defs={vitamins}
-            foods={foods}
-            rni={data.rni}
-            sex={sex}
-            ageYears={ageYears}
-            windowDays={windowDays}
-            openKey={openKey}
-            onToggle={setOpenKey}
-          />
-          <MicroList
-            title="Minerals"
-            defs={minerals}
-            foods={foods}
-            rni={data.rni}
-            sex={sex}
-            ageYears={ageYears}
-            windowDays={windowDays}
-            openKey={openKey}
-            onToggle={setOpenKey}
-          />
+          {/* Vitamins and minerals sit side by side once there's room; both
+              lists are long enough that scrolling one past the other is worse. */}
+          <div className={SPLIT}>
+            <div className={`${COL} lg:[&>*:first-child]:mt-0`}>
+              <MicroList
+                title="Vitamins"
+                defs={vitamins}
+                foods={foods}
+                rni={data.rni}
+                sex={sex}
+                ageYears={ageYears}
+                windowDays={windowDays}
+                openKey={openKey}
+                onToggle={setOpenKey}
+              />
+            </div>
+            <div className={`${COL} lg:[&>*:first-child]:mt-0`}>
+              <MicroList
+                title="Minerals"
+                defs={minerals}
+                foods={foods}
+                rni={data.rni}
+                sex={sex}
+                ageYears={ageYears}
+                windowDays={windowDays}
+                openKey={openKey}
+                onToggle={setOpenKey}
+              />
+            </div>
+          </div>
         </>
       )}
     </BootSequence>

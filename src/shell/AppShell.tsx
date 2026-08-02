@@ -21,8 +21,13 @@ export function AppShell() {
       >
         <div className="h-px w-32 animate-scan bg-gradient-to-r from-transparent via-live/60 to-transparent" />
       </div>
-      {/* Keyed on pathname so each route change re-enters with the 200ms fade. */}
-      <main key={location.pathname} className="relative animate-fade-in px-4 pt-safe pb-28">
+      {/* Keyed on pathname so each route change re-enters with the 200ms fade.
+          Past `lg` the tab bar is a 14rem rail, so main clears it on the left
+          and drops the thumb-room padding at the bottom. */}
+      <main
+        key={location.pathname}
+        className="relative animate-fade-in px-4 pt-safe pb-28 lg:pb-10 lg:pl-[15.5rem] lg:pr-6"
+      >
         <Outlet />
       </main>
       <TabBar />
