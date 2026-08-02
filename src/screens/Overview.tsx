@@ -9,14 +9,20 @@ import { listAllSets, listExercises, listSessions } from '../gym/data'
 import { bestLifts, bestPerSession } from '../gym/e1rm'
 import { inLondonWeek, londonDayKey, recentLondonDayKeys } from '../lib/londonDay'
 import {
+  fetchHydrationLog,
   fetchNutrientDefs,
+  fetchPrograms,
   fetchProfile,
   fetchRecentLog,
   fetchRniTargets,
   fetchSettings,
+  fetchWeightLog,
 } from '../food/data'
-import { resolveTargets } from '../food/targets'
+import { EXPENDITURE_WINDOW_DAYS, resolveCoach } from '../food/targets'
 import { averageDailyIntake, nutrientTotal, targetFor } from '../lib/nutrition'
+
+/** Enough history for the expenditure window; the overview needs no more. */
+const HISTORY_DAYS = 35
 
 const gbp = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
 
@@ -89,34 +95,51 @@ interface Nutrition {
   kcalTarget: number | null
   proteinToday: number
   proteinTargetG: number | null
+  /** Measured expenditure, once the coach has enough data. */
+  expenditureKcal: number | null
+  trendWeightKg: number | null
+  waterMl: number
+  waterTargetMl: number
   /** Worst micro under 50% of RNI on the 7-day view, if any. */
   worstMicro: { name: string; pct: number } | null
 }
 
+const EMPTY_NUTRITION: Nutrition = {
+  kcalToday: 0,
+  kcalTarget: null,
+  proteinToday: 0,
+  proteinTargetG: null,
+  expenditureKcal: null,
+  trendWeightKg: null,
+  waterMl: 0,
+  waterTargetMl: 2500,
+  worstMicro: null,
+}
+
 function useNutrition(): Nutrition {
-  const [nutrition, setNutrition] = useState<Nutrition>({
-    kcalToday: 0,
-    kcalTarget: null,
-    proteinToday: 0,
-    proteinTargetG: null,
-    worstMicro: null,
-  })
+  const [nutrition, setNutrition] = useState<Nutrition>(EMPTY_NUTRITION)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
-        const [profile, settings, rni, defs, log] = await Promise.all([
-          fetchProfile(),
-          fetchSettings(),
-          fetchRniTargets(),
-          fetchNutrientDefs(),
-          fetchRecentLog(7),
-        ])
+        const [profile, settings, rni, defs, log, weights, hydration, programs] = await Promise.all(
+          [
+            fetchProfile(),
+            fetchSettings(),
+            fetchRniTargets(),
+            fetchNutrientDefs(),
+            fetchRecentLog(HISTORY_DAYS),
+            fetchWeightLog(HISTORY_DAYS),
+            fetchHydrationLog(1),
+            fetchPrograms(1),
+          ],
+        )
         if (cancelled) return
         const now = new Date()
         const todayKey = londonDayKey(now)
         const weekKeys = new Set(recentLondonDayKeys(now, 7))
+        const dayKeys = recentLondonDayKeys(now, HISTORY_DAYS)
         const todayFoods = log
           .filter((e) => londonDayKey(new Date(e.logged_at)) === todayKey)
           .map((e) => ({ nutrients: e.nutrients }))
@@ -124,7 +147,18 @@ function useNutrition(): Nutrition {
           .filter((e) => weekKeys.has(londonDayKey(new Date(e.logged_at))))
           .map((e) => ({ nutrients: e.nutrients }))
 
-        const targets = resolveTargets(profile, settings, rni, now)
+        const coach = resolveCoach({
+          profile,
+          settings,
+          rni,
+          weights,
+          log,
+          windowDayKeys: dayKeys.slice(-EXPENDITURE_WINDOW_DAYS),
+          programs,
+          now,
+        })
+        const targets = coach.targets
+
         let worst: { name: string; pct: number } | null = null
         if (targets && weekFoods.length > 0) {
           for (const def of defs.filter((d) => d.kind === 'micro')) {
@@ -143,6 +177,12 @@ function useNutrition(): Nutrition {
           kcalTarget: targets?.kcalTarget ?? null,
           proteinToday: nutrientTotal(todayFoods, 'protein').value,
           proteinTargetG: targets?.proteinTargetG ?? null,
+          expenditureKcal: coach.expenditure ? Math.round(coach.expenditure.kcal) : null,
+          trendWeightKg: coach.trendWeightKg,
+          waterMl: hydration
+            .filter((h) => londonDayKey(new Date(h.logged_at)) === todayKey)
+            .reduce((sum, h) => sum + h.volume_ml, 0),
+          waterTargetMl: settings.hydration_target_ml,
           worstMicro: worst,
         })
       } catch {
@@ -172,11 +212,13 @@ function TargetRow({
   value,
   max,
   unit,
+  decimals = 0,
 }: {
   label: string
   value: number
   max: number
   unit: string
+  decimals?: number
 }) {
   const onTarget = value >= max
   return (
@@ -184,7 +226,12 @@ function TargetRow({
       <div className="flex items-baseline justify-between">
         <span className="text-label text-ink-faint">{label}</span>
         <span className={`text-label ${onTarget ? 'glow-live text-live' : 'text-ink-dim'}`}>
-          <CountUp value={value} /> / {max.toLocaleString('en-GB')} {unit}
+          <CountUp value={value} decimals={decimals} /> /{' '}
+          {max.toLocaleString('en-GB', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })}{' '}
+          {unit}
         </span>
       </div>
       <Bar
@@ -220,11 +267,37 @@ export function Overview() {
           <MetricTile label="Sessions">
             <CountUp value={strength.sessionsThisWeek} />
           </MetricTile>
-          <MetricTile label="Kcal today">
-            <CountUp value={nutrition.kcalToday} />
+          <MetricTile label={nutrition.kcalTarget === null ? 'Kcal today' : 'Kcal left'}>
+            <CountUp
+              value={
+                nutrition.kcalTarget === null
+                  ? nutrition.kcalToday
+                  : nutrition.kcalTarget - nutrition.kcalToday
+              }
+            />
           </MetricTile>
           <MetricTile label="Balance">
             <CountUp value={placeholder.balancePence / 100} format={(n) => gbp.format(n)} />
+          </MetricTile>
+        </div>
+
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <MetricTile label="Water L">
+            <CountUp value={nutrition.waterMl / 1000} decimals={1} />
+          </MetricTile>
+          <MetricTile label="Trend kg">
+            {nutrition.trendWeightKg === null ? (
+              <span className="text-ink-faint">—</span>
+            ) : (
+              <CountUp value={nutrition.trendWeightKg} decimals={1} />
+            )}
+          </MetricTile>
+          <MetricTile label="Burned">
+            {nutrition.expenditureKcal === null ? (
+              <span className="text-ink-faint">—</span>
+            ) : (
+              <CountUp value={nutrition.expenditureKcal} />
+            )}
           </MetricTile>
         </div>
 
@@ -261,6 +334,13 @@ export function Overview() {
                   unit="g"
                 />
               )}
+              <TargetRow
+                label="Water"
+                value={nutrition.waterMl / 1000}
+                max={nutrition.waterTargetMl / 1000}
+                unit="L"
+                decimals={1}
+              />
               <TargetRow
                 label="Steps"
                 value={placeholder.steps}

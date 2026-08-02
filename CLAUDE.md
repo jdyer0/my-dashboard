@@ -16,7 +16,7 @@ Four modules, built in this order:
 | ----- | ----------------------------------------------------------- | ------ |
 | 0     | Scaffold, design system, auth, shell                        | Built 2026-07-17, deployed 2026-07-18 |
 | 1     | Gym — exercises, sessions, sets, e1RM, PRs                  | Built 2026-07-18, not yet deployed |
-| 2     | Nutrition — food logging, macros + micronutrients vs UK RNI | Built 2026-07-18, not yet deployed |
+| 2     | Nutrition — adaptive coach, food logging, micros, hydration | Rebuilt 2026-08-01, not yet deployed |
 | 3     | Finances — bank sync, transactions, balances                | —      |
 | 4     | Goals — habits/streaks + long-term milestones               | —      |
 
@@ -66,6 +66,9 @@ no "it's just me so I'll skip it."
 No component library. No Redux/Zustand/Jotai unless a phase genuinely needs it — React
 state and context are sufficient for a four-tab app. No date library heavier than
 `date-fns`. Charts are hand-rolled SVG, not Recharts — see §5.
+
+The bottom tab bar stays at **four tabs**. Modules with more than one view use a segmented
+sub-nav under the screen title, as Food does (Diary / Trends / Micros / Water).
 
 ---
 
@@ -188,13 +191,20 @@ Sentence case. Active voice, verb first. No filler.
 ## 5. Charts
 
 Hand-rolled inline SVG. No Recharts, no Chart.js, no D3. The app needs sparklines, simple
-line charts, and horizontal bars — three components, maybe 150 lines total. A charting
-library costs 50–200KB gzipped to render a polyline, and none of them will match the
-design system without a fight.
+line charts, horizontal bars and one progress ring — four components, a few hundred lines
+total. A charting library costs 50–200KB gzipped to render a polyline, and none of them
+will match the design system without a fight.
 
 Rules: `0.5px` gridlines in `line`, axis labels 11px mono in `ink-faint`, the series stroke
 1.5px, no fills under lines, no dots except the final data point, no legends, no tooltips
 on mobile (tap a point to select it instead).
+
+The **ring** (`motion/Ring.tsx`, added 2026-08-01) is the one exception to "bars and lines
+only". Calories-remaining is the single number the diary exists to show, and a ring reads
+it at arm's length in a way a bar does not. It draws itself by `stroke-dashoffset` like the
+sparklines, so it belongs to the boot cascade rather than sitting outside it. One ring per
+screen, maximum — a screen of rings is a dashboard from 2014. Past 100% the ring holds full
+and marks twelve o'clock; it never wraps a second lap.
 
 ---
 
@@ -264,22 +274,101 @@ KYB required. Gotchas:
 ### Nutrition data (Phase 2)
 
 Food logging is **chat-only** (decided 2026-07-19, replacing the earlier CoFID/FDC food
-table). The user describes a meal in plain English; the `meal-parse` Edge Function (Gemini
-free tier, `gemini-flash-latest` — never pin a dated Gemini model) splits it into items and
-estimates each portion's macro- and micronutrients directly. There is no foods reference
-table, no CoFID ETL and no FDC lookup — the model's estimate is the record.
+table). The user describes a meal in plain English and/or photographs it; the `meal-parse`
+Edge Function (Gemini free tier, `gemini-flash-latest` — never pin a dated Gemini model)
+splits it into items and estimates each portion's macro- and micronutrients directly. There
+is no foods reference table, no CoFID ETL and no FDC lookup — the model's estimate is the
+record.
 
 - Each `food_log` row is self-contained: a name plus **absolute** nutrient amounts for the
   portion eaten, stored as `{nutrient_key: {value, is_trace}}` jsonb. Never per-100g.
 - Editing an entry's grams rescales its stored nutrients proportionally — there is no
-  source to re-derive them from.
+  source to re-derive them from. This is the **diary entry editor only**. The review list
+  after a breakdown shows the estimated grams as read-only text (changed 2026-08-02):
+  typing a gram figure you are also guessing at is slower than saying "a big bowl" and
+  worth less than a photo. Correcting a portion means describing it again.
+- **A photo is the portion input.** `meal-parse` accepts an optional inline image
+  (`{data, mime_type}`, base64, JPEG/PNG/WebP). The client downscales to a 1024px edge and
+  re-encodes as JPEG before sending — an untouched iPhone photo is ~4 MB for no gain, since
+  Gemini tiles at 768px. Either text or an image is a complete request.
+- **Thinking stays off**, and **the way you turn it off moves**. It is on by default and
+  costs seconds of reasoning tokens before the first byte, on a task that is recall against
+  a fixed schema. But the knob was renamed between model generations — 2.5 took
+  `thinkingConfig.thinkingBudget` in tokens, 3.x takes `thinkingConfig.thinkingLevel` as a
+  word — and `gemini-flash-latest` deliberately tracks whichever generation Google ships.
+  Sending the wrong one returns a bare 400 `INVALID_ARGUMENT` naming no field (happened
+  2026-08-02). `meal-parse` tries the shapes in order per request and falls back to letting
+  the model think. Do not collapse this to one hard-coded field, and do not memoise the
+  winner in module scope — that makes behaviour depend on which warm isolate served you,
+  which is untraceable when it breaks.
+- **The model spirals on unbounded decimals.** Every nutrient is an OpenAPI `NUMBER` with no
+  precision bound, and asked for a trace amount the model would start long-dividing —
+  `0.0054131578947368421…` — until the token ceiling cut the JSON in half, surfacing as a
+  two-minute hang and "couldn't estimate that meal" (2026-08-02). Three things hold it, and
+  all three matter: the prompt asks for 2 decimal places, `meal-parse` **rounds
+  server-side** regardless of what came back, and `maxOutputTokens` is sized so that even a
+  full runaway plus one retry finishes inside Supabase's **150s wall clock** — past that the
+  worker is killed with `WORKER_RESOURCE_LIMIT`, which no error handler can dress up.
+  Raising the ceiling to "leave headroom" makes failures slower, not rarer.
+- **Fill in every nutrient.** Telling the model to omit trace amounts rather than write long
+  decimals worked, and gutted the Micros screen — a fry-up came back with zinc and nothing
+  else. Round instead of omitting. Absent means genuinely unknown, and 0 means the food
+  really contains none.
+- **Free-tier request quotas are per model, daily, and small.** `gemini-flash-latest`
+  resolved to `gemini-3.6-flash` with a cap of **20 requests per day** (2026-08-02) — an
+  afternoon of use exhausts it, and it resets at midnight Pacific, not on a rolling window.
+  `meal-parse` therefore tries `MODELS` in quality order and falls back to
+  `gemini-flash-lite-latest` on a 429, which has its own separate allowance. Both are
+  aliases; never swap either for a dated id. A successful response carries which model
+  answered, so degraded estimates are traceable to the fallback rather than looking like the
+  coach getting worse.
 - A nutrient the model omits is unknown: absent from the jsonb, rendered as "no data" —
   never a zero bar. The null-vs-zero distinction is still load-bearing.
 - The Gemini key lives only in Edge Function secrets, sent in a header, never in the client.
+  The image goes in the request body — never in a URL.
 
-Targets are **UK Reference Nutrient Intakes (RNI)**, not US RDAs. They differ meaningfully
-on iron, folate and vitamin D. The `rni_targets` table is keyed by sex and age band, and
-`nutrient_defs` names the tracked nutrient keys — the meal-parse schema mirrors it.
+Micronutrient targets are **UK Reference Nutrient Intakes (RNI)**, not US RDAs. They differ
+meaningfully on iron, folate and vitamin D. The `rni_targets` table is keyed by sex and age
+band, and `nutrient_defs` names the tracked nutrient keys — the meal-parse schema mirrors it.
+
+Drinks in a meal description also carry `water_ml`, which feeds the hydration log. Alcohol
+is excluded; milk and juice count their water content, not their volume.
+
+### The adaptive coach (Phase 2, added 2026-08-01)
+
+Calorie and macro targets are **measured, not calculated from a formula**. The engine lives
+in `lib/adaptive.ts`, is pure, and is unit-tested — no Harris-Benedict, no activity
+multiplier, no height-and-age guess.
+
+- **Trend weight** is a gap-aware EWMA (α 0.15/day, ~4-day half-life) over daily weigh-ins.
+  The compounding across gaps is load-bearing: a weigh-in after a fortnight away must count
+  as new information, not as yesterday's. The trend is always computed over full history and
+  clipped afterwards — windowing first leaves the smoother cold-started and reads a
+  systematically shallow slope.
+- **Expenditure** is energy balance: `mean intake − (trend slope kg/day × 7,700)`. Only days
+  with a food log count toward mean intake; an unlogged day is unknown, never a zero-calorie
+  day. Reported with a standard error combining slope scatter and intake variance. Returns
+  **null** rather than a shaky number below 10 logged days, 4 weigh-ins, or a 10-day span.
+- **Targets** come from expenditure plus the goal rate's energy cost, floored at 1,200 kcal
+  and at 65% of expenditure. Protein is pinned to trend bodyweight and defended first, fat
+  takes its share of energy above an essential floor of 0.5 g/kg, carbohydrate absorbs the
+  remainder.
+- **Check-ins are proposed, never applied.** The coach computes fresh targets each Monday and
+  offers them on the diary; the user accepts with one tap. Targets that changed on their own
+  between opening the app and logging lunch would be worse than stale ones. Accepted
+  check-ins are rows in `nutrition_programs`, keyed on the effective Monday so accepting
+  twice is idempotent.
+- Manual mode remains: the user sets the four numbers and the coach only observes.
+
+### Hydration (Phase 2)
+
+Displayed in **litres**, stored as **integer millilitres** — the same minor-unit rule money
+follows, so a day of 250 ml glasses totals exactly 2.000 L. Default target 2,500 ml,
+editable, with a suggestion of ~35 ml per kg of trend weight.
+
+Water is the one place the null-vs-zero distinction does **not** apply: an unlogged glass and
+an undrunk one are the same thing, so a day with no entries is a real zero. Streaks forgive
+an incomplete today — a day still in progress hasn't failed yet.
 
 ---
 
