@@ -5,6 +5,7 @@ import { prepareMealPhoto, type MealImage } from '../food/photo'
 import { mealForTime, type Meal, type NutrientMap } from '../lib/nutrition'
 import { litres } from '../lib/hydration'
 import { BUTTON, CARD, FoodPush } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 
 const MEALS: { key: Meal; label: string }[] = [
   { key: 'breakfast', label: 'Breakfast' },
@@ -133,6 +134,8 @@ export function FoodChat() {
 
   return (
     <FoodPush title="Describe a meal" subtitle="A photo sharpens the portions">
+      <div className={SPLIT}>
+      <div className={COL}>
       <section className={CARD}>
         <label htmlFor="meal-text" className="text-label text-ink-faint">
           What did you eat?
@@ -212,11 +215,15 @@ export function FoodChat() {
       </section>
 
       {failed && <p className="mt-2 text-body text-alert">{failed}</p>}
+      </div>
 
+      {/* The breakdown lands beside the description on a desktop, so correcting
+          it doesn't mean scrolling back up to the text you wrote. */}
+      <div className={COL}>
       {/* Holds the space the results will fill so the page doesn't jump. Static
           by design — §4 allows one perpetual animation and the sync dot has it. */}
       {parsing && (
-        <section className={`mt-2.5 ${CARD}`} aria-hidden>
+        <section className={`mt-2.5 ${CARD} lg:mt-0`} aria-hidden>
           {[0, 1, 2].map((i) => (
             <div key={i} className="border-b border-line py-2.5 last:border-b-0">
               <div className="h-3 w-2/5 rounded-ctl bg-line" />
@@ -228,7 +235,7 @@ export function FoodChat() {
 
       {rows && (
         <>
-          <section className={`mt-2.5 ${CARD}`}>
+          <section className={`mt-2.5 ${CARD} lg:mt-0`}>
             <ul>
               {rows.map((row, index) => (
                 <li
@@ -277,6 +284,8 @@ export function FoodChat() {
           </section>
         </>
       )}
+      </div>
+      </div>
     </FoodPush>
   )
 }

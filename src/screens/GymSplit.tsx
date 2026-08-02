@@ -4,6 +4,7 @@ import { fetchSplitDays, fetchSplitTemplates, listExercises, setSplitDay } from 
 import { FOCUS_LABELS, FOCUS_OPTIONS, TEMPLATE_FOCUSES, WEEKDAY_LABELS } from '../gym/split'
 import { londonWeekday } from '../lib/londonDay'
 import type { Exercise, SplitFocus, SplitTemplateExercise } from '../gym/types'
+import { COL, PAGE, PageHeader, SPLIT } from '../shell/PageHeader'
 
 export function GymSplit() {
   const [days, setDays] = useState<Map<number, SplitFocus>>(new Map())
@@ -51,7 +52,7 @@ export function GymSplit() {
 
   if (failed && !loaded) {
     return (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">Couldn't load your split. Go back and retry.</p>
       </div>
     )
@@ -63,15 +64,17 @@ export function GymSplit() {
   const names = new Map(exercises.map((e) => [e.id, e.name]))
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">Split</h1>
-        <p className="mt-0.5 text-label text-ink-faint">Tap a day to set its focus</p>
-      </header>
+    <div className={PAGE}>
+      <PageHeader
+        back={{ to: '/gym', label: 'Gym' }}
+        title="Split"
+        subtitle="Tap a day to set its focus"
+      />
 
       {failed && <p className="mb-2 text-body text-alert">Couldn't save. Try again.</p>}
 
-      <section className="rounded-card border border-line bg-surface p-3">
+      <div className={SPLIT}>
+      <section className={`${COL} rounded-card border border-line bg-surface p-3`}>
         <ul>
           {WEEKDAY_LABELS.map((label, weekday) => {
             const focus = days.get(weekday) ?? 'rest'
@@ -119,7 +122,7 @@ export function GymSplit() {
         </ul>
       </section>
 
-      <section className="mt-2.5 rounded-card border border-line bg-surface p-3">
+      <section className={`${COL} mt-2.5 rounded-card border border-line bg-surface p-3 lg:mt-0`}>
         <h2 className="text-card-title text-ink">Day templates</h2>
         <ul className="mt-1">
           {TEMPLATE_FOCUSES.map((focus) => {
@@ -150,6 +153,7 @@ export function GymSplit() {
           })}
         </ul>
       </section>
+      </div>
     </div>
   )
 }

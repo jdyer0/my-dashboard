@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { PAGE } from '../shell/PageHeader'
 
 const SECTIONS = [
   { to: '/food', label: 'Diary', end: true },
@@ -14,12 +15,14 @@ const SECTIONS = [
  */
 export function FoodLayout() {
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
+    <div className={PAGE}>
       <header className="pb-2 pt-2">
         <h1 className="text-screen-title text-ink">Food</h1>
       </header>
 
-      <nav className="mb-2.5 grid grid-cols-4 gap-1 rounded-ctl border border-line bg-surface p-1">
+      {/* Stays a segmented control rather than stretching across a desktop —
+          four tabs a metre wide read as a toolbar, not a switch. */}
+      <nav className="mb-2.5 grid grid-cols-4 gap-1 rounded-ctl border border-line bg-surface p-1 lg:max-w-lg">
         {SECTIONS.map(({ to, label, end }) => (
           <NavLink
             key={to}

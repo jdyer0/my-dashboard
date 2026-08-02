@@ -14,6 +14,7 @@ import { adviseProgression } from '../gym/coach'
 import { bestLifts, e1rm, prSetIds } from '../gym/e1rm'
 import { clockTime, fmtKg, sessionDate } from '../gym/format'
 import type { Exercise, GymSession as Session, GymSet } from '../gym/types'
+import { COL, PAGE, PageHeader, SPLIT } from '../shell/PageHeader'
 
 const NEW_EXERCISE = '__new__'
 
@@ -251,7 +252,7 @@ export function GymSession() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
@@ -263,26 +264,29 @@ export function GymSession() {
   const otherGroups = groupSets(sessionSets).filter((g) => g.exerciseId !== current?.id)
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="flex items-center justify-between pb-2 pt-2">
-        <div>
-          <h1 className="text-screen-title text-ink">Session</h1>
-          {session && (
-            <p className="mt-0.5 text-label font-mono tabular-nums text-ink-faint">
-              started {clockTime.format(new Date(session.started_at))}
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => void finish()}
-          disabled={finishing}
-          className="h-11 btn-glow rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
-        >
-          Finish
-        </button>
-      </header>
+    <div className={PAGE}>
+      {/* Leaving isn't finishing: sets are already saved, so the back link
+          parks the session and Finish is what closes it out. */}
+      <PageHeader
+        back={{ to: '/gym', label: 'Gym' }}
+        title="Session"
+        subtitle={
+          session ? `started ${clockTime.format(new Date(session.started_at))}` : undefined
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => void finish()}
+            disabled={finishing}
+            className="h-11 shrink-0 btn-glow rounded-ctl border border-line bg-surface-raised px-4 text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint"
+          >
+            Finish
+          </button>
+        }
+      />
 
+      <div className={SPLIT}>
+      <div className={COL}>
       <label htmlFor="exercise-select" className="text-label text-ink-faint">
         Exercise
       </label>
@@ -472,9 +476,10 @@ export function GymSession() {
           )}
         </section>
       )}
+      </div>
 
       {otherGroups.length > 0 && (
-        <div className="mt-2.5 space-y-2.5">
+        <div className={`${COL} mt-2.5 space-y-2.5 lg:mt-0`}>
           {[...otherGroups].reverse().map((group) => (
             <section
               key={group.exerciseId}
@@ -497,6 +502,7 @@ export function GymSession() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

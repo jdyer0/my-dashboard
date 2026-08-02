@@ -5,6 +5,7 @@ import { listAllSets, listExercises, listSessions } from '../gym/data'
 import { prSetIds, totalVolumeKg } from '../gym/e1rm'
 import { clockTime, fmtKg, sessionDate } from '../gym/format'
 import type { Exercise, GymSession, GymSet } from '../gym/types'
+import { PAGE, PageHeader } from '../shell/PageHeader'
 
 const monthFormat = new Intl.DateTimeFormat('en-GB', {
   month: 'long',
@@ -67,7 +68,7 @@ export function GymHistory() {
 
   if (failed) {
     return (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">Couldn't load your history. Go back and retry.</p>
       </div>
     )
@@ -77,14 +78,13 @@ export function GymHistory() {
 
   return (
     <BootSequence>
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <BootItem>
-          <header className="pb-2 pt-2">
-            <h1 className="text-screen-title text-ink">History</h1>
-            <p className="mt-0.5 text-label font-mono tabular-nums text-ink-faint">
-              {derived.months.reduce((n, m) => n + m.sessions.length, 0)} sessions
-            </p>
-          </header>
+          <PageHeader
+            back={{ to: '/gym', label: 'Gym' }}
+            title="History"
+            subtitle={`${derived.months.reduce((n, m) => n + m.sessions.length, 0)} sessions`}
+          />
         </BootItem>
 
         {derived.months.length === 0 && (
@@ -93,6 +93,8 @@ export function GymHistory() {
           </BootItem>
         )}
 
+        {/* Months sit side by side once there's width for them. */}
+        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-2.5 2xl:grid-cols-3">
         {derived.months.map((month) => (
           <BootItem key={month.label} className="mb-2.5">
             <h2 className="pb-1.5 pt-1 text-label text-ink-faint">{month.label.toLowerCase()}</h2>
@@ -143,6 +145,7 @@ export function GymHistory() {
             </div>
           </BootItem>
         ))}
+        </div>
       </div>
     </BootSequence>
   )

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Bar } from '../motion/Bar'
 import { CountUp } from '../motion/CountUp'
 import { saveProfile } from '../food/data'
+import { PAGE, PageHeader } from '../shell/PageHeader'
 
 /** The one button style the food module uses. */
 export const BUTTON =
@@ -9,22 +10,23 @@ export const BUTTON =
 
 export const CARD = 'rounded-card border border-line bg-surface p-3'
 
-/** Container for a screen pushed off the food tabs — same width, own title. */
+/** Container for a screen pushed off the food tabs — same width, own title.
+    Every push gets a back control: the tab bar would drop you on the diary and
+    lose which of the four views you came from. */
 export function FoodPush({
   title,
   subtitle,
+  back = { to: '/food', label: 'Food' },
   children,
 }: {
   title: string
   subtitle?: string
+  back?: { to: string; label: string }
   children: ReactNode
 }) {
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-label text-ink-faint">{subtitle}</p>}
-      </header>
+    <div className={PAGE}>
+      <PageHeader back={back} title={title} subtitle={subtitle} />
       {children}
     </div>
   )
@@ -65,7 +67,9 @@ export function ProfilePrompt({ onSaved }: { onSaved: () => void }) {
   }
 
   return (
-    <section className={CARD}>
+    // Capped: a sex toggle and a date field stretched across a desktop reads as
+    // a form someone forgot to lay out.
+    <section className={`${CARD} lg:max-w-2xl`}>
       <h2 className="text-card-title text-ink">Set your targets</h2>
       <p className="mt-1 text-body text-ink-dim">
         Nutrient targets are UK RNIs, looked up by sex and age.

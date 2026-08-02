@@ -14,6 +14,7 @@ import {
 } from '../lib/hydration'
 import { londonDayKey } from '../lib/londonDay'
 import { BUTTON, CARD, LoadFailed, StatRow } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 
 /** The vessels a day actually gets drunk out of. */
 const QUICK_ADD = [
@@ -115,6 +116,8 @@ export function FoodWater() {
 
   return (
     <BootSequence>
+      <div className={SPLIT}>
+      <div className={COL}>
       <BootItem className={CARD}>
         <div className="flex items-center gap-4">
           <Ring
@@ -190,8 +193,10 @@ export function FoodWater() {
         </div>
         {actionFailed && <p className="mt-2 text-body text-alert">{actionFailed}</p>}
       </BootItem>
+      </div>
 
-      <BootItem className={`mt-2.5 ${CARD}`}>
+      <div className={COL}>
+      <BootItem className={`mt-2.5 ${CARD} lg:mt-0`}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-card-title text-ink">Last 14 days</h2>
           <button
@@ -301,6 +306,8 @@ export function FoodWater() {
           </ul>
         )}
       </BootItem>
+      </div>
+      </div>
     </BootSequence>
   )
 }

@@ -4,6 +4,7 @@ import { listAllSets, listExercises, updateExerciseSettings } from '../gym/data'
 import { adviseProgression } from '../gym/coach'
 import { fmtKg, sessionDate } from '../gym/format'
 import type { Exercise, GymSet } from '../gym/types'
+import { COL, PAGE, PageHeader, SPLIT } from '../shell/PageHeader'
 
 function parseWeight(text: string): number | null {
   const n = Number(text.replace(',', '.'))
@@ -76,6 +77,7 @@ export function GymCoach() {
   const [increment, setIncrement] = useState('2.5')
   const [rangeMin, setRangeMin] = useState('8')
   const [rangeMax, setRangeMax] = useState('12')
+  const [savingSettings, setSavingSettings] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -113,19 +115,33 @@ export function GymCoach() {
     }
   }
 
-  // Settings persist per exercise, fire-and-forget; the advice below reacts
-  // to the local values immediately either way.
-  function persistSettings(next: { increment: string; min: string; max: string }) {
-    if (!current) return
-    const incrementKg = parseWeight(next.increment)
-    const min = parseCount(next.min)
-    const max = parseCount(next.max)
+  // The advice below reacts to the typed values immediately, but they are only
+  // written back to the exercise on Save — an in-progress rep range shouldn't
+  // become that exercise's setting everywhere else in the app.
+  async function saveSettings() {
+    if (!current || savingSettings) return
+    const incrementKg = parseWeight(increment)
+    const min = parseCount(rangeMin)
+    const max = parseCount(rangeMax)
     if (incrementKg === null || min === null || max === null || max < min) return
     const settings = { increment_kg: incrementKg, rep_range_min: min, rep_range_max: max }
-    setExercises((prev) => prev.map((e) => (e.id === current.id ? { ...e, ...settings } : e)))
-    updateExerciseSettings(current.id, settings).catch(() =>
-      setFailed("Couldn't save the exercise settings. They'll reset next time."),
-    )
+    setSavingSettings(true)
+    try {
+      await updateExerciseSettings(current.id, settings)
+      setExercises((prev) => prev.map((e) => (e.id === current.id ? { ...e, ...settings } : e)))
+      // `current` is its own copy, and settingsDirty compares against it — without
+      // this the button would stay on "Save" forever after a successful save.
+      setCurrent((prev) => (prev && prev.id === current.id ? { ...prev, ...settings } : prev))
+      // Re-render the inputs from the canonical numbers, so "2.50" doesn't read
+      // as a pending edit against a stored 2.5.
+      setIncrement(String(settings.increment_kg))
+      setRangeMin(String(settings.rep_range_min))
+      setRangeMax(String(settings.rep_range_max))
+    } catch {
+      setFailed("Couldn't save the exercise settings. Try again.")
+    } finally {
+      setSavingSettings(false)
+    }
   }
 
   const weightNum = parseWeight(weight)
@@ -133,6 +149,13 @@ export function GymCoach() {
   const incrementNum = parseWeight(increment)
   const minNum = parseCount(rangeMin)
   const maxNum = parseCount(rangeMax)
+  const settingsValid =
+    incrementNum !== null && minNum !== null && maxNum !== null && maxNum >= minNum
+  const settingsDirty =
+    current !== null &&
+    (increment !== String(current.increment_kg) ||
+      rangeMin !== String(current.rep_range_min) ||
+      rangeMax !== String(current.rep_range_max))
   const advice =
     weightNum !== null &&
     repsNum !== null &&
@@ -151,20 +174,19 @@ export function GymCoach() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
   }
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">Coach</h1>
-        <p className="mt-0.5 text-label text-ink-faint">
-          Double progression: fill the rep range, then add weight
-        </p>
-      </header>
+    <div className={PAGE}>
+      <PageHeader
+        back={{ to: '/gym', label: 'Gym' }}
+        title="Coach"
+        subtitle="Double progression: fill the rep range, then add weight"
+      />
 
       <label htmlFor="coach-select" className="text-label text-ink-faint">
         Exercise
@@ -184,7 +206,7 @@ export function GymCoach() {
             const exercise = exercises.find((ex) => ex.id === e.target.value)
             if (exercise) pickExercise(exercise)
           }}
-          className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright"
+          className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-3 text-body text-ink focus:border-line-bright lg:max-w-md"
         >
           <option value="" disabled>
             Choose exercise
@@ -198,8 +220,8 @@ export function GymCoach() {
       )}
 
       {current && (
-        <>
-          <section className="mt-2.5 rounded-card border border-line bg-surface p-3">
+        <div className={`mt-2.5 ${SPLIT}`}>
+          <section className={`${COL} rounded-card border border-line bg-surface p-3`}>
             <p className="text-label text-ink-faint">
               Last set:{' '}
               {lastSet ? (
@@ -247,10 +269,7 @@ export function GymCoach() {
                   id="coach-increment"
                   inputMode="decimal"
                   value={increment}
-                  onChange={(e) => {
-                    setIncrement(e.target.value)
-                    persistSettings({ increment: e.target.value, min: rangeMin, max: rangeMax })
-                  }}
+                  onChange={(e) => setIncrement(e.target.value)}
                   className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
                 />
               </div>
@@ -262,10 +281,7 @@ export function GymCoach() {
                   id="coach-range-min"
                   inputMode="numeric"
                   value={rangeMin}
-                  onChange={(e) => {
-                    setRangeMin(e.target.value)
-                    persistSettings({ increment, min: e.target.value, max: rangeMax })
-                  }}
+                  onChange={(e) => setRangeMin(e.target.value)}
                   className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
                 />
               </div>
@@ -277,18 +293,25 @@ export function GymCoach() {
                   id="coach-range-max"
                   inputMode="numeric"
                   value={rangeMax}
-                  onChange={(e) => {
-                    setRangeMax(e.target.value)
-                    persistSettings({ increment, min: rangeMin, max: e.target.value })
-                  }}
+                  onChange={(e) => setRangeMax(e.target.value)}
                   className="mt-1.5 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
                 />
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => void saveSettings()}
+              disabled={savingSettings || !settingsDirty || !settingsValid}
+              className="mt-3 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:border-line disabled:bg-surface disabled:text-ink-faint disabled:shadow-none"
+            >
+              {settingsDirty ? 'Save exercise settings' : 'Exercise settings saved'}
+            </button>
           </section>
 
+          <div className={COL}>
           {advice && (
-            <section className="mt-2.5 rounded-card border border-line bg-surface p-3">
+            <section className="mt-2.5 rounded-card border border-line bg-surface p-3 lg:mt-0">
               <h2 className="text-card-title text-ink">Advice</h2>
               <div className="mt-2 flex items-baseline justify-between">
                 <span className="text-body text-ink-dim">
@@ -320,7 +343,8 @@ export function GymCoach() {
           )}
 
           {failed && <p className="mt-2 text-body text-alert">{failed}</p>}
-        </>
+          </div>
+        </div>
       )}
     </div>
   )

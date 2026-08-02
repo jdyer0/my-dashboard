@@ -6,6 +6,7 @@ import { deleteWeight, saveWeight } from '../food/data'
 import { useFoodData } from '../food/useFoodData'
 import { daysBetween } from '../lib/adaptive'
 import { BUTTON, CARD, FoodPush, LoadFailed, StatRow } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 import { signedKg } from '../food/format'
 
 const dayLabel = new Intl.DateTimeFormat('en-GB', {
@@ -87,6 +88,8 @@ export function FoodWeight() {
   return (
     <FoodPush title="Weight" subtitle="What the coach reads your expenditure from">
       <BootSequence>
+      <div className={SPLIT}>
+      <div className={COL}>
       <BootItem className={CARD}>
         <h2 className="text-card-title text-ink">
           {loggedToday ? "Correct today's weigh-in" : "Log today's weight"}
@@ -168,8 +171,10 @@ export function FoodWeight() {
           )}
         </BootItem>
       )}
+      </div>
 
-      <BootItem className={`mt-2.5 ${CARD}`}>
+      <div className={COL}>
+      <BootItem className={`mt-2.5 ${CARD} lg:mt-0`}>
         <h2 className="text-card-title text-ink">History</h2>
         {recent.length === 0 ? (
           <p className="py-8 text-center text-body text-ink-dim">Step on the scale to start</p>
@@ -208,6 +213,8 @@ export function FoodWeight() {
           </ul>
         )}
       </BootItem>
+      </div>
+      </div>
       </BootSequence>
     </FoodPush>
   )
