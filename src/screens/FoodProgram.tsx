@@ -7,6 +7,7 @@ import { useFoodData } from '../food/useFoodData'
 import { KCAL_PER_KG, macroEnergy, programTargets } from '../lib/adaptive'
 import { londonWeekStartKey } from '../lib/londonDay'
 import { BUTTON, CARD, FoodPush, LoadFailed, ProfilePrompt, StatRow } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 import { signedKg } from '../food/format'
 import type { ProgramMode } from '../food/types'
 
@@ -47,6 +48,11 @@ export function FoodProgram() {
   const [busy, setBusy] = useState(false)
   const [actionFailed, setActionFailed] = useState<string | null>(null)
   const [manual, setManual] = useState<Record<FieldKey, string> | null>(null)
+  const [draft, setDraft] = useState<{
+    goalRate: number
+    proteinPerKg: number
+    fatPct: number
+  } | null>(null)
 
   // Seed the manual fields from whatever the user is currently eating to, so
   // switching to manual starts from the coached numbers rather than blank.
@@ -80,9 +86,15 @@ export function FoodProgram() {
   }
 
   const mode = settings.program_mode
-  const goalRate = Number(settings.goal_rate_kg_per_week)
-  const proteinPerKg = Number(settings.protein_g_per_kg)
-  const fatPct = Number(settings.fat_pct_energy)
+  // Goal and split are edited as a draft and committed with Save. Dragging a
+  // slider used to fire a write per step, so a single adjustment sent dozens.
+  const goalRate = draft ? draft.goalRate : Number(settings.goal_rate_kg_per_week)
+  const proteinPerKg = draft ? draft.proteinPerKg : Number(settings.protein_g_per_kg)
+  const fatPct = draft ? draft.fatPct : Number(settings.fat_pct_energy)
+  const coachedDirty =
+    goalRate !== Number(settings.goal_rate_kg_per_week) ||
+    proteinPerKg !== Number(settings.protein_g_per_kg) ||
+    fatPct !== Number(settings.fat_pct_energy)
 
   // Live preview: what the current settings would issue right now.
   const preview =
@@ -108,6 +120,30 @@ export function FoodProgram() {
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Edit the draft, seeding it from the saved values on the first touch. */
+  function edit(fields: Partial<{ goalRate: number; proteinPerKg: number; fatPct: number }>) {
+    setDraft((prev) => ({
+      goalRate: Number(settings.goal_rate_kg_per_week),
+      proteinPerKg: Number(settings.protein_g_per_kg),
+      fatPct: Number(settings.fat_pct_energy),
+      ...prev,
+      ...fields,
+    }))
+  }
+
+  // The draft is deliberately left in place: it already holds what was just
+  // saved, so `coachedDirty` falls to false on its own once the reload lands.
+  // Clearing it here would flash the previous settings until then, and would
+  // discard the user's edit if the write failed.
+  async function saveCoached() {
+    if (!draft || !coachedDirty || busy) return
+    await patch({
+      goal_rate_kg_per_week: draft.goalRate,
+      protein_g_per_kg: draft.proteinPerKg,
+      fat_pct_energy: draft.fatPct,
+    })
   }
 
   const parsedManual = manual
@@ -172,6 +208,8 @@ export function FoodProgram() {
   return (
     <FoodPush title="Program" subtitle="Goal, macro split and check-in history">
       <BootSequence>
+      <div className={SPLIT}>
+      <div className={COL}>
       <BootItem className={CARD}>
         <h2 className="text-card-title text-ink">How targets are set</h2>
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -214,7 +252,7 @@ export function FoodProgram() {
                 <button
                   key={rate.kg}
                   type="button"
-                  onClick={() => void patch({ goal_rate_kg_per_week: rate.kg })}
+                  onClick={() => edit({ goalRate: rate.kg })}
                   disabled={busy}
                   className={`flex min-h-[52px] flex-col items-center justify-center rounded-ctl border px-1 transition-transform duration-150 ease-instrument active:scale-[0.98] ${
                     goalRate === rate.kg
@@ -254,7 +292,7 @@ export function FoodProgram() {
                 max={3}
                 step={0.1}
                 value={proteinPerKg}
-                onChange={(e) => void patch({ protein_g_per_kg: Number(e.target.value) })}
+                onChange={(e) => edit({ proteinPerKg: Number(e.target.value) })}
                 disabled={busy}
                 className="mt-2 h-11 w-full accent-live"
               />
@@ -275,7 +313,7 @@ export function FoodProgram() {
                 max={0.45}
                 step={0.01}
                 value={fatPct}
-                onChange={(e) => void patch({ fat_pct_energy: Number(e.target.value) })}
+                onChange={(e) => edit({ fatPct: Number(e.target.value) })}
                 disabled={busy}
                 className="mt-2 h-11 w-full accent-live"
               />
@@ -284,10 +322,31 @@ export function FoodProgram() {
               Carbohydrate takes whatever calories are left, so it's the macro that moves when the
               target changes.
             </p>
+            <button
+              type="button"
+              onClick={() => void saveCoached()}
+              disabled={busy || !coachedDirty}
+              className={`mt-3 ${BUTTON}`}
+            >
+              {coachedDirty ? 'Save goal and split' : 'Goal and split saved'}
+            </button>
+            {coachedDirty && (
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                disabled={busy}
+                className="mt-2 h-11 w-full rounded-ctl border border-line text-body text-ink-dim transition-transform duration-150 ease-instrument active:scale-[0.98]"
+              >
+                Discard changes
+              </button>
+            )}
           </BootItem>
 
           <BootItem className={`mt-2.5 ${CARD}`}>
-            <h2 className="text-card-title text-ink">What that gives you</h2>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-card-title text-ink">What that gives you</h2>
+              {coachedDirty && <span className="text-label text-warn">unsaved</span>}
+            </div>
             {preview && coach.expenditure ? (
               <>
                 <div className="mt-2 flex items-baseline gap-2">
@@ -365,9 +424,11 @@ export function FoodProgram() {
           )}
         </BootItem>
       )}
+      </div>
 
+      <div className={COL}>
       {programs.length > 0 && (
-        <BootItem className={`mt-2.5 ${CARD}`}>
+        <BootItem className={`mt-2.5 ${CARD} lg:mt-0`}>
           <h2 className="text-card-title text-ink">Check-in history</h2>
           <ul className="mt-1">
             {programs.map((p) => (
@@ -390,6 +451,8 @@ export function FoodProgram() {
           </ul>
         </BootItem>
       )}
+      </div>
+      </div>
       </BootSequence>
     </FoodPush>
   )

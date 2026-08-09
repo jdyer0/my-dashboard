@@ -8,6 +8,7 @@ import {
 } from '../gym/data'
 import { FOCUS_LABELS, isTemplateFocus } from '../gym/split'
 import type { Exercise, SplitTemplateExercise } from '../gym/types'
+import { COL, PAGE, PageHeader, SPLIT } from '../shell/PageHeader'
 
 export function GymSplitTemplate() {
   const { focus: focusParam } = useParams()
@@ -46,7 +47,7 @@ export function GymSplitTemplate() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
@@ -87,15 +88,15 @@ export function GymSplitTemplate() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">{FOCUS_LABELS[focus]} day</h1>
-        <p className="mt-0.5 text-label text-ink-faint">
-          These exercises apply to every {FOCUS_LABELS[focus].toLowerCase()} day
-        </p>
-      </header>
+    <div className={PAGE}>
+      <PageHeader
+        back={{ to: '/gym/split', label: 'Split' }}
+        title={`${FOCUS_LABELS[focus]} day`}
+        subtitle={`These exercises apply to every ${FOCUS_LABELS[focus].toLowerCase()} day`}
+      />
 
-      <section className="rounded-card border border-line bg-surface p-3">
+      <div className={SPLIT}>
+      <section className={`${COL} rounded-card border border-line bg-surface p-3`}>
         {inTemplate.length === 0 ? (
           <p className="py-4 text-center text-body text-ink-dim">Add your first exercise</p>
         ) : (
@@ -122,7 +123,7 @@ export function GymSplitTemplate() {
         )}
       </section>
 
-      <div className="mt-2.5">
+      <div className={`${COL} mt-2.5 lg:mt-0`}>
         <label htmlFor="template-add" className="text-label text-ink-faint">
           Add exercise
         </label>
@@ -157,6 +158,7 @@ export function GymSplitTemplate() {
             ))}
           </select>
         )}
+      </div>
       </div>
 
       {failed && <p className="mt-2 text-body text-alert">{failed}</p>}

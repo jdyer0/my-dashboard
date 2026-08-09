@@ -76,6 +76,29 @@ lands. Four is the ceiling, not the target — a tab is added when its module is
 before. Modules with more than one view use a segmented sub-nav under the screen title, as
 Food does (Diary / Trends / Micros / Water).
 
+### Desktop (added 2026-08-02)
+
+The phone is still the design target, but the app is also opened in a browser, where a
+phone-width column left most of the canvas empty. Past Tailwind's `lg` (1024px):
+
+- The four tabs stand up into a **14rem left rail** — same four links, same component, CSS
+  only. Nothing re-mounts on resize.
+- `PAGE` (`shell/PageHeader.tsx`) drops its width clamp, so screens take the full canvas.
+  Below `lg` the classes are byte-identical to what they were, so the phone is untouched.
+- Card stacks split into two columns via `SPLIT` / `COL`. Cards keep their own `mt-*`
+  rhythm inside a column; the first card of the second column needs `lg:mt-0`.
+- Forms and segmented controls stay **capped** (`lg:max-w-*`). Filling the width applies to
+  data, not to a date field — a sex toggle a metre wide reads as a layout someone forgot.
+
+**Every pushed screen carries a back control**, rendered by `PageHeader` above the title.
+It is an explicit `to`, never `navigate(-1)`: this is a home-screen PWA, so a deep link or
+a cold start can leave no history to go back through.
+
+**Settings commit on Save, not on keystroke or slider drag.** Typed edits and dragged
+sliders are held in local draft state with a dirty flag; the button reads "Save …" while
+dirty and "… saved" when not. Writing per keystroke sent a request per digit and made a
+half-typed rep range look like a stored setting.
+
 ---
 
 ## 4. Design system

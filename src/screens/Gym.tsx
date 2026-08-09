@@ -8,6 +8,7 @@ import { clockTime, fmtKg, sessionDate } from '../gym/format'
 import { FOCUS_LABELS, WEEKDAY_LABELS } from '../gym/split'
 import { inLondonWeek, londonWeekday } from '../lib/londonDay'
 import type { Exercise, GymSession, GymSet, SplitDay } from '../gym/types'
+import { COL, PAGE, SPLIT } from '../shell/PageHeader'
 
 interface GymData {
   sessions: GymSession[]
@@ -55,7 +56,7 @@ export function Gym() {
 
   if (failed) {
     return (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <header className="pb-1 pt-2">
           <h1 className="text-screen-title text-ink">Gym</h1>
         </header>
@@ -107,7 +108,7 @@ export function Gym() {
 
   return (
     <BootSequence>
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <BootItem>
           <header className="flex items-baseline justify-between pb-2 pt-2">
             <h1 className="text-screen-title text-ink">Gym</h1>
@@ -148,7 +149,7 @@ export function Gym() {
         </BootItem>
 
         <BootItem className="mt-2.5">
-          <div className="grid gap-2 md:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-3">
             <Link
               to="/gym/coach"
               className="btn-glow rounded-card border border-line bg-surface p-3 transition-transform duration-150 ease-instrument active:scale-[0.98]"
@@ -198,8 +199,9 @@ export function Gym() {
           </div>
         </BootItem>
 
+        <div className={`${SPLIT} mt-2.5`}>
         {bests.length > 0 && (
-          <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
+          <BootItem className={`${COL} rounded-card border border-line bg-surface p-3`}>
             <h2 className="text-card-title text-ink">Best lifts</h2>
             <ul className="mt-2 space-y-2">
               {bests.map((lift) => {
@@ -223,7 +225,7 @@ export function Gym() {
         )}
 
         {finished.length > 0 && (
-          <BootItem className="mt-2.5 rounded-card border border-line bg-surface p-3">
+          <BootItem className={`${COL} mt-2.5 rounded-card border border-line bg-surface p-3 lg:mt-0`}>
             <div className="flex items-baseline justify-between">
               <h2 className="text-card-title text-ink">History</h2>
               <Link
@@ -255,6 +257,7 @@ export function Gym() {
             </ul>
           </BootItem>
         )}
+        </div>
 
         {!active && finished.length === 0 && (
           <BootItem>

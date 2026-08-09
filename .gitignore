@@ -15,6 +15,11 @@ supabase/.branches
 # local machine config, not project config
 .claude/settings.local.json
 
+# Claude Code's scratch worktrees. These are checkouts of this same repo, so
+# committing one records a gitlink to a branch that may never reach the remote —
+# a fresh clone then gets an empty directory it thinks is a submodule.
+.claude/worktrees/
+
 .DS_Store
 
 # Local Netlify folder

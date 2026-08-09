@@ -9,6 +9,7 @@ import { saveProgram } from '../food/data'
 import { FIBRE_TARGET_G, nutrientTotal } from '../lib/nutrition'
 import { litres } from '../lib/hydration'
 import { BUTTON, BUTTON_TILE, CARD, LoadFailed, MacroRow, ProfilePrompt } from './FoodParts'
+import { COL, SPLIT } from '../shell/PageHeader'
 import type { FoodLogEntry } from '../food/types'
 
 const MEALS: { key: FoodLogEntry['meal']; label: string }[] = [
@@ -131,6 +132,8 @@ export function FoodDiary() {
         </BootItem>
       )}
 
+      <div className={SPLIT}>
+      <div className={COL}>
       <BootItem className={CARD}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-card-title text-ink">Today</h2>
@@ -239,7 +242,11 @@ export function FoodDiary() {
           Enter the numbers by hand
         </Link>
       </BootItem>
+      </div>
 
+      {/* Meals take the second column: the totals stay put while the day's
+          entries grow down beside them. */}
+      <div className={`${COL} lg:[&>*:first-child]:mt-0`}>
       {todayEntries.length > 0 ? (
         MEALS.map(({ key, label }) => {
           const entries = todayEntries.filter((e) => e.meal === key)
@@ -287,6 +294,8 @@ export function FoodDiary() {
           <p className="py-12 text-center text-body text-ink-dim">Log your first meal</p>
         </BootItem>
       )}
+      </div>
+      </div>
     </BootSequence>
   )
 }

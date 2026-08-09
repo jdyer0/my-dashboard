@@ -20,6 +20,7 @@ import {
 } from '../food/data'
 import { EXPENDITURE_WINDOW_DAYS, resolveCoach } from '../food/targets'
 import { averageDailyIntake, nutrientTotal, targetFor } from '../lib/nutrition'
+import { PAGE } from '../shell/PageHeader'
 
 /** Enough history for the expenditure window; the overview needs no more. */
 const HISTORY_DAYS = 35
@@ -248,7 +249,7 @@ export function Overview() {
 
   return (
     <BootSequence>
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <BootItem>
           <header className="flex items-center justify-between pb-2 pt-2">
             <h1 className="text-screen-title text-ink">{today}</h1>
@@ -259,7 +260,9 @@ export function Overview() {
           </header>
         </BootItem>
 
-        <div className="grid grid-cols-3 gap-2">
+        {/* Five tiles: three then two on a phone, one row once the desktop
+            rail has freed the width. */}
+        <div className="grid grid-cols-3 gap-2 lg:grid-cols-5">
           <MetricTile label="Sessions">
             <CountUp value={strength.sessionsThisWeek} />
           </MetricTile>

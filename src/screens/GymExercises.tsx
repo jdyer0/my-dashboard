@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { addExercise, listExercises, updateExerciseSettings } from '../gym/data'
 import type { Exercise } from '../gym/types'
+import { PAGE, PageHeader } from '../shell/PageHeader'
 
 function parseWeight(text: string): number | null {
   const n = Number(text.replace(',', '.'))
@@ -24,21 +25,41 @@ function ExerciseRow({
   const [increment, setIncrement] = useState(String(exercise.increment_kg))
   const [rangeMin, setRangeMin] = useState(String(exercise.rep_range_min))
   const [rangeMax, setRangeMax] = useState(String(exercise.rep_range_max))
+  const [saving, setSaving] = useState(false)
 
-  function persist(next: { increment: string; min: string; max: string }) {
-    const incrementKg = parseWeight(next.increment)
-    const min = parseCount(next.min)
-    const max = parseCount(next.max)
-    if (incrementKg === null || min === null || max === null || max < min) return
+  const incrementKg = parseWeight(increment)
+  const min = parseCount(rangeMin)
+  const max = parseCount(rangeMax)
+  const valid = incrementKg !== null && min !== null && max !== null && max >= min
+  const dirty =
+    increment !== String(exercise.increment_kg) ||
+    rangeMin !== String(exercise.rep_range_min) ||
+    rangeMax !== String(exercise.rep_range_max)
+
+  // Typed edits are held until Save. Writing on every keystroke sent a request
+  // per digit and made a half-typed rep range look like a saved one.
+  async function save() {
+    if (!valid || !dirty || saving) return
     const settings = { increment_kg: incrementKg, rep_range_min: min, rep_range_max: max }
-    onSaved(settings)
-    updateExerciseSettings(exercise.id, settings).catch(onFailed)
+    setSaving(true)
+    try {
+      await updateExerciseSettings(exercise.id, settings)
+      onSaved(settings)
+      // Canonical strings, so "2.50" stops reading as a pending edit.
+      setIncrement(String(settings.increment_kg))
+      setRangeMin(String(settings.rep_range_min))
+      setRangeMax(String(settings.rep_range_max))
+    } catch {
+      onFailed()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <li className="border-b border-line py-2.5 last:border-b-0">
       <p className="text-body text-ink">{exercise.name}</p>
-      <div className="mt-1.5 grid grid-cols-3 gap-2">
+      <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-4">
         <div>
           <label htmlFor={`inc-${exercise.id}`} className="text-label text-ink-faint">
             Increment kg
@@ -47,10 +68,7 @@ function ExerciseRow({
             id={`inc-${exercise.id}`}
             inputMode="decimal"
             value={increment}
-            onChange={(e) => {
-              setIncrement(e.target.value)
-              persist({ increment: e.target.value, min: rangeMin, max: rangeMax })
-            }}
+            onChange={(e) => setIncrement(e.target.value)}
             className="mt-1 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
           />
         </div>
@@ -62,10 +80,7 @@ function ExerciseRow({
             id={`min-${exercise.id}`}
             inputMode="numeric"
             value={rangeMin}
-            onChange={(e) => {
-              setRangeMin(e.target.value)
-              persist({ increment, min: e.target.value, max: rangeMax })
-            }}
+            onChange={(e) => setRangeMin(e.target.value)}
             className="mt-1 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
           />
         </div>
@@ -77,12 +92,19 @@ function ExerciseRow({
             id={`max-${exercise.id}`}
             inputMode="numeric"
             value={rangeMax}
-            onChange={(e) => {
-              setRangeMax(e.target.value)
-              persist({ increment, min: rangeMin, max: e.target.value })
-            }}
+            onChange={(e) => setRangeMax(e.target.value)}
             className="mt-1 h-11 w-full rounded-ctl border border-line bg-surface px-1 text-center text-body font-mono tabular-nums text-ink focus:border-line-bright"
           />
+        </div>
+        <div className="col-span-3 sm:col-span-1 sm:self-end">
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={!valid || !dirty || saving}
+            className="mt-1 h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:border-line disabled:bg-surface disabled:text-ink-faint disabled:shadow-none"
+          >
+            {dirty ? 'Save' : 'Saved'}
+          </button>
         </div>
       </div>
     </li>
@@ -136,22 +158,21 @@ export function GymExercises() {
 
   if (!loaded) {
     return failed ? (
-      <div className="mx-auto w-full max-w-md md:max-w-2xl">
+      <div className={PAGE}>
         <p className="py-8 text-body text-alert">{failed}</p>
       </div>
     ) : null
   }
 
   return (
-    <div className="mx-auto w-full max-w-md md:max-w-2xl">
-      <header className="pb-2 pt-2">
-        <h1 className="text-screen-title text-ink">Exercises</h1>
-        <p className="mt-0.5 text-label text-ink-faint">
-          Rep range and increment drive the coach's advice
-        </p>
-      </header>
+    <div className={PAGE}>
+      <PageHeader
+        back={{ to: '/gym', label: 'Gym' }}
+        title="Exercises"
+        subtitle="Rep range and increment drive the coach's advice"
+      />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 lg:max-w-xl">
         <input
           type="text"
           placeholder="New exercise"

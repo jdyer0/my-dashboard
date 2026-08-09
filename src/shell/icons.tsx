@@ -44,3 +44,11 @@ export function FoodIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+export function BackIcon({ className }: IconProps) {
+  return (
+    <svg {...base} width={16} height={16} className={className}>
+      <path d="M12 4.5 6.5 10l5.5 5.5" />
+    </svg>
+  )
+}
