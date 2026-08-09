@@ -10,15 +10,19 @@ this file, say so rather than silently deviating.
 A single-user life dashboard PWA. Not a product, not multi-tenant, no onboarding flow, no
 marketing pages, no team features. One person uses it, on an iPhone, from the home screen.
 
-Four modules, built in this order:
+Three modules, built in this order:
 
 | Phase | Module                                                      | Status |
 | ----- | ----------------------------------------------------------- | ------ |
 | 0     | Scaffold, design system, auth, shell                        | Built 2026-07-17, deployed 2026-07-18 |
 | 1     | Gym — exercises, sessions, sets, e1RM, PRs                  | Built 2026-07-18, not yet deployed |
 | 2     | Nutrition — adaptive coach, food logging, micros, hydration | Rebuilt 2026-08-01, not yet deployed |
-| 3     | Finances — bank sync, transactions, balances                | —      |
 | 4     | Goals — habits/streaks + long-term milestones               | —      |
+
+Phase 3 was finances — bank sync, transactions, balances. It was dropped on 2026-08-09 and
+is not coming back: no bank integration, no money module, no currency anywhere in the app.
+The remaining phases keep their original numbers so `PHASE-4.md` still names the phase it
+describes.
 
 Update the status column as phases land. Do not build ahead of the current phase. Do not
 scaffold "for later" — no placeholder routes, no stub tables, no commented-out imports for
@@ -30,8 +34,8 @@ modules that don't exist yet.
 
 These are not preferences. Violating any of them breaks the app or costs real money.
 
-**Never put secrets in the client.** The Enable Banking RSA private key, the Supabase
-service role key, and the health webhook token must never appear in any file under `src/`,
+**Never put secrets in the client.** The Supabase service role key, the Gemini API key and
+the health webhook token must never appear in any file under `src/`,
 in any `VITE_*` env var, or in the built bundle. Anything prefixed `VITE_` is public — treat
 it as if it were printed on the homepage. Server-side secrets live only in Supabase Edge
 Function secrets.
@@ -39,7 +43,7 @@ Function secrets.
 **Netlify is a static host and nothing else.** No Netlify Functions, no scheduled functions,
 no edge functions. The free plan is credit-metered (300/month, hard cap, no auto-recharge)
 and each production deploy costs 15 credits — roughly 20 deploys a month before the site
-stops serving. Free-tier function timeout is 10s, which a bank sync would blow through
+stops serving. Free-tier function timeout is 10s, which a meal parse would blow through
 anyway. All server work goes to Supabase Edge Functions.
 
 **Don't deploy to check your work.** Verify with `npm run dev` locally. Deploys are a
@@ -64,11 +68,13 @@ no "it's just me so I'll skip it."
 - **PWA** — `vite-plugin-pwa`, add-to-home-screen, offline shell
 
 No component library. No Redux/Zustand/Jotai unless a phase genuinely needs it — React
-state and context are sufficient for a four-tab app. No date library heavier than
+state and context are sufficient for a app this small. No date library heavier than
 `date-fns`. Charts are hand-rolled SVG, not Recharts — see §5.
 
-The bottom tab bar stays at **four tabs**. Modules with more than one view use a segmented
-sub-nav under the screen title, as Food does (Diary / Trends / Micros / Water).
+The bottom tab bar is **Overview / Gym / Food**, and gains a fourth tab only when Goals
+lands. Four is the ceiling, not the target — a tab is added when its module is built, never
+before. Modules with more than one view use a segmented sub-nav under the screen title, as
+Food does (Diary / Trends / Micros / Water).
 
 ---
 
@@ -109,7 +115,7 @@ There is no light mode. The app is dark in both system modes.
 - **IBM Plex Mono** — every numeral the user reads as data, without exception
 
 The mono/sans split is the core device: it makes numbers read as instrumentation rather
-than as prose. A step count, a weight, a percentage, a timestamp, a currency amount — mono.
+than as prose. A step count, a weight, a percentage, a timestamp, a rep count — mono.
 A card title, a button, a body sentence — sans.
 
 Always set `font-variant-numeric: tabular-nums` on mono numerals so counting animations and
@@ -181,7 +187,7 @@ or hidden — only the motion goes.
 Sentence case. Active voice, verb first. No filler.
 
 - Buttons name the action: "Log set", not "Submit"
-- Errors say what happened and what to do: "Sync failed. Reconnect your bank." Never
+- Errors say what happened and what to do: "Sync failed. Check your connection." Never
   "Error:", never an exception string, never an apology
 - Empty states invite: "Log your first workout", not "No workouts yet"
 - Never "successfully", never "please", never an exclamation mark
@@ -215,8 +221,8 @@ and marks twelve o'clock; it never wraps a second lap.
 - **Days**: a "day" for streaks and daily totals is the user's local calendar day, not a
   UTC day. Compute the boundary in Europe/London or the streak breaks at midnight BST.
 - **Weight**: store kilograms as `numeric(6,2)`. Never float.
-- **Money**: store minor units as `integer` (pence). Never float, never `numeric` with
-  rounding at the edges.
+- **Volume**: store minor units as `integer` (millilitres). Never float, never `numeric`
+  with rounding at the edges.
 - **Nutrients**: store per-100g values as `numeric`. `null` means unknown — it is not zero.
   This distinction is load-bearing (see §7).
 - **Enums**: Postgres `text` with a `check` constraint, not native enums. Native enums are
@@ -248,38 +254,28 @@ Supabase Edge Function, and a Personal Automation fires it nightly.
   nights. The shortcut sends a trailing 7-day window, not just yesterday, so a missed night
   self-heals on the next run. Design for this rather than treating it as an error.
 
-### Enable Banking (Phase 3)
-
-Free "restricted production" — activated by whitelisting your own accounts, no contract or
-KYB required. Gotchas:
-
-- Auth is a JWT signed with an RSA private key. Max TTL 24h; generate per request. **Edge
-  Function only** — the key never touches the client.
-- **Grab all history on the very first sync** using `strategy=longest`. Full history is
-  typically available only for about an hour after initial authorisation; after that most
-  banks clamp to a 90-day rolling window. Miss it and it's gone until you re-authorise.
-- Enable Banking stores nothing. Our Postgres is the only durable copy.
-- Paginate on `continuation_key` until it comes back null. An empty transaction list plus a
-  non-null key means _keep going_ — it does not mean done.
-- Dedupe on `entry_reference`. It's unique per account, not globally — key on
-  `(account_id, entry_reference)`. Exclude pending (`PDNG`) transactions from matching.
-- Match accounts across sessions on `identification_hash`, never on the account id — ids are
-  session-scoped and change on every re-auth.
-- Consent expires at 180 days for most banks. Handle `EXPIRED_SESSION` (arrives as a 401)
-  by surfacing a reconnect prompt. Warn in-app 14 days before expiry.
-- Background fetches (no PSU headers) are capped around 4/day per bank. On
-  `ASPSP_RATE_LIMIT_EXCEEDED`, back off 6 hours. Send PSU headers only when the user
-  actually triggered the sync.
-
 ### Nutrition data (Phase 2)
 
-Food logging is **chat-only** (decided 2026-07-19, replacing the earlier CoFID/FDC food
-table). The user describes a meal in plain English and/or photographs it; the `meal-parse`
-Edge Function (Gemini free tier, `gemini-flash-latest` — never pin a dated Gemini model)
-splits it into items and estimates each portion's macro- and micronutrients directly. There
-is no foods reference table, no CoFID ETL and no FDC lookup — the model's estimate is the
-record.
+Food logging is **coach-first** (chat-only from 2026-07-19, replacing the earlier CoFID/FDC
+food table; a manual path added alongside it 2026-08-09). The user describes a meal in plain
+English and/or photographs it; the `meal-parse` Edge Function (Gemini free tier,
+`gemini-flash-latest` — never pin a dated Gemini model) splits it into items and estimates
+each portion's macro- and micronutrients directly. There is no foods reference table, no
+CoFID ETL and no FDC lookup — the model's estimate is the record.
 
+- **Typing a label is the second path, not a second system.** `FoodManual` writes the same
+  self-contained row through the same `logMeal`; only the source of the numbers differs. It
+  exists because a packaged food already carries better figures on the back than a model
+  would guess at, and because the free tier's daily allowance runs out mid-afternoon. It
+  stays second-string in the UI — a text link under the diary tiles and at the foot of the
+  chat screen, never a tile of its own. Do not grow it into a saved-foods list or a barcode
+  scanner: that is the foods table climbing back in through the window.
+- The form takes the eight figures a UK pack prints, in the order it prints them, plus a
+  **portion / per-100 g** switch — reading the wrong column is the likeliest mistake, so it
+  is a choice rather than a guess. Blank stays absent from the jsonb (unknown), a typed zero
+  is stored (none). Energy is required, but derives from protein, carbohydrate and fat at
+  Atwater factors when all three are given. That logic lives in `food/manualEntry.ts`, pure
+  and unit-tested; the screen only collects strings.
 - Each `food_log` row is self-contained: a name plus **absolute** nutrient amounts for the
   portion eaten, stored as `{nutrient_key: {value, is_trace}}` jsonb. Never per-100g.
 - Editing an entry's grams rescales its stored nutrients proportionally — there is no
@@ -381,7 +377,7 @@ an incomplete today — a day still in progress hasn't failed yet.
 - **Types are not optional.** No `any`, no `@ts-ignore`. If a type is genuinely unknowable,
   `unknown` plus a narrowing guard.
 - **Don't write tests for Phase 0.** From Phase 1, unit-test the pure logic only — e1RM
-  maths, streak boundaries, nutrient aggregation, transaction dedupe. Do not test React
+  maths, streak boundaries, nutrient aggregation, manual-entry parsing. Do not test React
   rendering.
 - **Touch-first.** Tap targets 44px minimum. Nothing depends on hover. Forms are usable
   one-thumbed.

@@ -6,7 +6,7 @@ interface CountUpProps {
   value: number
   /** Decimal places when no format is given. */
   decimals?: number
-  /** Full control over rendering, e.g. currency: (n) => gbp.format(n) */
+  /** Full control over rendering, e.g. compact: (n) => `${n}kg` */
   format?: (n: number) => string
   className?: string
 }

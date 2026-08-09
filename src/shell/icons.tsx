@@ -44,12 +44,3 @@ export function FoodIcon({ className }: IconProps) {
     </svg>
   )
 }
-
-export function MoneyIcon({ className }: IconProps) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="2.5" y="5.5" width="15" height="9" rx="1.5" />
-      <circle cx="10" cy="10" r="2" />
-    </svg>
-  )
-}

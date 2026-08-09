@@ -3,11 +3,62 @@ import { Bar } from '../motion/Bar'
 import { CountUp } from '../motion/CountUp'
 import { saveProfile } from '../food/data'
 
-/** The one button style the food module uses. */
-export const BUTTON =
-  'h-11 w-full btn-glow rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint'
+/** The button skin — colour, border, press. Carries no width or height: a
+    caller that appended `w-24` to a class string holding `w-full` lost, because
+    the stylesheet order decides that, not the order of the words. Each variant
+    below states its own size instead. */
+const BUTTON_SKIN =
+  'btn-glow inline-flex rounded-ctl border border-line bg-surface-raised text-body text-ink transition-transform duration-150 ease-instrument active:scale-[0.98] disabled:text-ink-faint'
+
+/** Full-width button — the module default, one per card. */
+export const BUTTON = `${BUTTON_SKIN} h-11 w-full items-center justify-center px-4`
+
+/** Sits in a row next to a field, sized to its label so the field keeps the
+    space. */
+export const BUTTON_INLINE = `${BUTTON_SKIN} h-11 shrink-0 items-center justify-center px-5`
+
+/** A two-line tile that happens to be tappable; height comes from content. */
+export const BUTTON_TILE = `${BUTTON_SKIN} w-full flex-col items-start justify-start gap-0.5 p-3 text-left`
 
 export const CARD = 'rounded-card border border-line bg-surface p-3'
+
+/** A number being typed, with its unit pinned inside the field. Outside, the
+    unit reads as another control in the row; inside, it reads as part of the
+    value. */
+export function UnitField({
+  id,
+  label,
+  unit,
+  value,
+  placeholder,
+  onChange,
+}: {
+  id: string
+  label: string
+  unit: string
+  value: string
+  placeholder?: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <input
+        id={id}
+        inputMode="decimal"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 w-full rounded-ctl border border-line bg-surface pl-3 pr-10 text-metric-sm font-mono tabular-nums text-ink placeholder:text-ink-faint focus:border-line-bright"
+      />
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-label text-ink-faint">
+        {unit}
+      </span>
+    </div>
+  )
+}
 
 /** Container for a screen pushed off the food tabs — same width, own title. */
 export function FoodPush({

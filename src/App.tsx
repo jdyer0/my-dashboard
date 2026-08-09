@@ -4,7 +4,6 @@ import { SignIn } from './auth/SignIn'
 import { Splash } from './auth/Splash'
 import { BootGuardProvider } from './motion/BootSequence'
 import { AppShell } from './shell/AppShell'
-import { EmptyModule } from './shell/EmptyModule'
 import { Overview } from './screens/Overview'
 import { Gym } from './screens/Gym'
 import { GymSession } from './screens/GymSession'
@@ -20,6 +19,7 @@ import { FoodTrends } from './screens/FoodTrends'
 import { FoodMicros } from './screens/FoodMicros'
 import { FoodWater } from './screens/FoodWater'
 import { FoodChat } from './screens/FoodChat'
+import { FoodManual } from './screens/FoodManual'
 import { FoodEntry } from './screens/FoodEntry'
 import { FoodProgram } from './screens/FoodProgram'
 import { FoodWeight } from './screens/FoodWeight'
@@ -51,13 +51,10 @@ function Gate() {
           <Route path="water" element={<FoodWater />} />
         </Route>
         <Route path="food/chat" element={<FoodChat />} />
+        <Route path="food/manual" element={<FoodManual />} />
         <Route path="food/entry/:id" element={<FoodEntry />} />
         <Route path="food/program" element={<FoodProgram />} />
         <Route path="food/weight" element={<FoodWeight />} />
-        <Route
-          path="money"
-          element={<EmptyModule title="Money" invitation="Connect your bank" />}
-        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

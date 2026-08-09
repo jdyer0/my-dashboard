@@ -13,7 +13,7 @@ import {
   suggestedTargetMl,
 } from '../lib/hydration'
 import { londonDayKey } from '../lib/londonDay'
-import { BUTTON, CARD, LoadFailed, StatRow } from './FoodParts'
+import { BUTTON_INLINE, CARD, LoadFailed, StatRow, UnitField } from './FoodParts'
 
 /** The vessels a day actually gets drunk out of. */
 const QUICK_ADD = [
@@ -167,23 +167,19 @@ export function FoodWater() {
           ))}
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <label htmlFor="custom-water" className="sr-only">
-            Custom amount in litres
-          </label>
-          <input
+          <UnitField
             id="custom-water"
-            inputMode="decimal"
+            label="Custom amount in litres"
+            unit="L"
             value={custom}
-            onChange={(e) => setCustom(e.target.value)}
             placeholder="0.4"
-            className="h-11 min-w-0 flex-1 rounded-ctl border border-line bg-surface px-3 text-body font-mono tabular-nums text-ink placeholder:text-ink-faint focus:border-line-bright"
+            onChange={setCustom}
           />
-          <span className="text-label text-ink-faint">L</span>
           <button
             type="button"
             onClick={() => customMl !== null && void add(customMl)}
             disabled={busy || customMl === null}
-            className={`${BUTTON} w-24`}
+            className={BUTTON_INLINE}
           >
             Add
           </button>
@@ -208,23 +204,22 @@ export function FoodWater() {
 
         {editingTarget ? (
           <div className="mt-2">
-            <label htmlFor="water-target" className="text-label text-ink-faint">
-              Daily target, litres
-            </label>
+            {/* Caption, not a second <label> — UnitField already labels the
+                field for assistive tech. */}
+            <p className="text-label text-ink-faint">Daily target, litres</p>
             <div className="mt-1.5 flex items-center gap-2">
-              <input
+              <UnitField
                 id="water-target"
-                inputMode="decimal"
+                label="Daily target in litres"
+                unit="L"
                 value={targetInput}
-                onChange={(e) => setTargetInput(e.target.value)}
-                className="h-11 min-w-0 flex-1 rounded-ctl border border-line bg-surface px-3 text-body font-mono tabular-nums text-ink focus:border-line-bright"
+                onChange={setTargetInput}
               />
-              <span className="text-label text-ink-faint">L</span>
               <button
                 type="button"
                 onClick={() => void saveTarget()}
                 disabled={busy}
-                className={`${BUTTON} w-24`}
+                className={BUTTON_INLINE}
               >
                 Save
               </button>

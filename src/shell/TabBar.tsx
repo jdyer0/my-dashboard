@@ -1,11 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { OverviewIcon, GymIcon, FoodIcon, MoneyIcon } from './icons'
+import { OverviewIcon, GymIcon, FoodIcon } from './icons'
 
 const tabs = [
   { to: '/', label: 'Overview', Icon: OverviewIcon },
   { to: '/gym', label: 'Gym', Icon: GymIcon },
   { to: '/food', label: 'Food', Icon: FoodIcon },
-  { to: '/money', label: 'Money', Icon: MoneyIcon },
 ]
 
 export function TabBar() {

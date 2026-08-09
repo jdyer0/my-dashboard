@@ -8,7 +8,7 @@ import { useFoodData } from '../food/useFoodData'
 import { saveProgram } from '../food/data'
 import { FIBRE_TARGET_G, nutrientTotal } from '../lib/nutrition'
 import { litres } from '../lib/hydration'
-import { BUTTON, CARD, LoadFailed, MacroRow, ProfilePrompt } from './FoodParts'
+import { BUTTON, BUTTON_TILE, CARD, LoadFailed, MacroRow, ProfilePrompt } from './FoodParts'
 import type { FoodLogEntry } from '../food/types'
 
 const MEALS: { key: FoodLogEntry['meal']; label: string }[] = [
@@ -207,23 +207,19 @@ export function FoodDiary() {
 
       <div className="mt-2.5 grid grid-cols-2 gap-2">
         <BootItem>
-          <button
-            type="button"
-            onClick={() => navigate('/food/chat')}
-            className={`${BUTTON} h-auto py-3 text-left`}
-          >
-            <span className="block px-3 text-body text-ink">Describe a meal</span>
-            <span className="mt-0.5 block px-3 text-label text-ink-faint">
+          <button type="button" onClick={() => navigate('/food/chat')} className={BUTTON_TILE}>
+            <span className="text-body text-ink">Describe a meal</span>
+            <span className="text-label text-ink-faint">
               {todayEntries.length} logged today
             </span>
           </button>
         </BootItem>
         <BootItem>
-          <Link to="/food/weight" className={`${BUTTON} block h-auto py-3`}>
-            <span className="block px-3 text-body text-ink">
+          <Link to="/food/weight" className={BUTTON_TILE}>
+            <span className="text-body text-ink">
               {coach.scaleWeightKg !== null ? `${coach.scaleWeightKg.toFixed(1)} kg` : 'Log weight'}
             </span>
-            <span className="mt-0.5 block px-3 text-label text-ink-faint">
+            <span className="text-label text-ink-faint">
               {coach.trendWeightKg !== null
                 ? `trend ${coach.trendWeightKg.toFixed(1)}`
                 : 'the coach needs this'}
@@ -231,6 +227,18 @@ export function FoodDiary() {
           </Link>
         </BootItem>
       </div>
+
+      {/* Second-string, deliberately: describing a meal is the way in, and
+          typing a label is what you reach for when the pack already has the
+          numbers or the coach has run out of requests for the day. */}
+      <BootItem>
+        <Link
+          to="/food/manual"
+          className="mt-2 flex min-h-[44px] items-center justify-center text-label text-ink-faint underline decoration-line-bright"
+        >
+          Enter the numbers by hand
+        </Link>
+      </BootItem>
 
       {todayEntries.length > 0 ? (
         MEALS.map(({ key, label }) => {

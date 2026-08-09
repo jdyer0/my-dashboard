@@ -24,8 +24,6 @@ import { averageDailyIntake, nutrientTotal, targetFor } from '../lib/nutrition'
 /** Enough history for the expenditure window; the overview needs no more. */
 const HISTORY_DAYS = 35
 
-const gbp = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
-
 const dateFormat = new Intl.DateTimeFormat('en-GB', {
   weekday: 'long',
   day: 'numeric',
@@ -34,10 +32,8 @@ const dateFormat = new Intl.DateTimeFormat('en-GB', {
 })
 
 // Placeholder values — real data replaces these as each module lands.
-// Gym (Phase 1) and food (Phase 2) are live; balance and steps wait for
-// Phases 3–4.
+// Gym (Phase 1) and food (Phase 2) are live; steps wait for Phase 4.
 const placeholder = {
-  balancePence: 243152,
   steps: 8420,
   stepsTarget: 10000,
 }
@@ -276,12 +272,6 @@ export function Overview() {
               }
             />
           </MetricTile>
-          <MetricTile label="Balance">
-            <CountUp value={placeholder.balancePence / 100} format={(n) => gbp.format(n)} />
-          </MetricTile>
-        </div>
-
-        <div className="mt-2 grid grid-cols-3 gap-2">
           <MetricTile label="Water L">
             <CountUp value={nutrition.waterMl / 1000} decimals={1} />
           </MetricTile>

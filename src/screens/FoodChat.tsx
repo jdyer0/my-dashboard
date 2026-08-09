@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { logMeal, parseMealRemote } from '../food/data'
 import { prepareMealPhoto, type MealImage } from '../food/photo'
 import { mealForTime, type Meal, type NutrientMap } from '../lib/nutrition'
@@ -277,6 +277,16 @@ export function FoodChat() {
           </section>
         </>
       )}
+
+      {/* The way out when the coach can't help: a packaged food already has
+          better numbers on the back, and the free tier's daily allowance is
+          small enough to run out mid-afternoon. */}
+      <Link
+        to="/food/manual"
+        className="mt-6 flex min-h-[44px] items-center justify-center text-label text-ink-faint underline decoration-line-bright"
+      >
+        Enter the numbers by hand
+      </Link>
     </FoodPush>
   )
 }
